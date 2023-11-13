@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Windows;
 using System.Windows.Input;
 
 namespace FIH_GUI_Encryptor
@@ -15,93 +16,78 @@ namespace FIH_GUI_Encryptor
         private const string _Encryption_IV = "n0&y)$MGjBt24?L8";
 
         // AES-256 bit Encryption
-        public string Encrypt(string message, string KeyString)
+        public string Encrypt(string plainText, string key)
         {
-            byte[] Key = ASCIIEncoding.UTF8.GetBytes(KeyString);
-            string encrypted = null;
-
-            using (var rijndaelManaged =
-                       new RijndaelManaged { Key = Key, Mode = CipherMode.CBC, Padding = PaddingMode.PKCS7, BlockSize = 128, KeySize = 256 })
-            {
-                rijndaelManaged.GenerateIV();
-                try
-                {
-                    // Get the generated IV.
-                    byte[] iv = rijndaelManaged.IV;
-
-                    using (var memoryStream = new MemoryStream())
-                    {
-                        using (var cryptoStream =
-                               new CryptoStream(memoryStream,
-                                   rijndaelManaged.CreateEncryptor(rijndaelManaged.Key, rijndaelManaged.IV),
-                                   CryptoStreamMode.Write))
-                        using (var streamWriter = new StreamWriter(cryptoStream))
-                        {
-                            streamWriter.Write(message);
-                        }
-
-                        // Combine IV and ciphertext.
-                        Debug.WriteLine("1");
-                        byte[] combined = new byte[iv.Length + memoryStream.Length];
-                        Debug.WriteLine("2");
-                        Array.Copy(iv, 0, combined, 0, iv.Length);
-                        Debug.WriteLine("3");
-                        memoryStream.ToArray().CopyTo(combined, iv.Length);
-                        Debug.WriteLine("4");
-                        // IV + message encoded.
-                        encrypted = Convert.ToBase64String(combined);
-                        Debug.WriteLine("5");
-                    }
-                }
-                catch (CryptographicException e)
-                {
-                    Debug.WriteLine($"[FIH Class - Encrypt] -> A Cryptographic error occurred: {e.Message}");
-                    return null;
-                }
-                catch (UnauthorizedAccessException e)
-                {
-                    Debug.WriteLine($"[FIH Class - Encrypt] -> A file error occurred: {e.Message}");
-                    return null;
-                }
-                catch (Exception e)
-                {
-                    Debug.WriteLine($"[FIH Class - Encrypt] -> An error occurred: {e.Message}");
-                }
-            }
-
-            return encrypted;
-        }
-        public string Decrypt(string cipherData, string keyString)
-        {
-            byte[] key = Encoding.UTF8.GetBytes(keyString);
-            byte[] combined = Convert.FromBase64String(cipherData);
-            byte[] iv = new byte[16];
-            byte[] ciphertext = new byte[combined.Length - iv.Length];
-
-            Array.Copy(combined, 0, iv, 0, iv.Length);
-            Array.Copy(combined, iv.Length, ciphertext, 0, ciphertext.Length);
-
             try
             {
-                using (var rijndaelManaged =
-                       new RijndaelManaged { Key = key, IV = iv, Mode = CipherMode.CBC, Padding = PaddingMode.PKCS7, BlockSize = 128, KeySize = 256 })
-                using (var memoryStream =
-                       new MemoryStream(Convert.FromBase64String(cipherData)))
-                using (var cryptoStream =
-                       new CryptoStream(memoryStream,
-                           rijndaelManaged.CreateDecryptor(key, iv),
-                           CryptoStreamMode.Read))
+                using (Aes aes = Aes.Create())
                 {
-                    return new StreamReader(cryptoStream).ReadToEnd();
+                    aes.KeySize = 256;
+                    aes.BlockSize = 128;
+                    aes.Padding = PaddingMode.PKCS7;
+
+                    var keyBytes = new byte[32];
+                    var keyArray = Encoding.UTF8.GetBytes(key);
+                    Array.Copy(keyArray, keyBytes, Math.Min(keyBytes.Length, keyArray.Length));
+                    aes.Key = keyBytes;
+
+                    aes.GenerateIV();
+
+                    using (var encryptor = aes.CreateEncryptor(aes.Key, aes.IV))
+                    using (var ms = new MemoryStream())
+                    {
+                        ms.Write(aes.IV, 0, 16);
+
+                        using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
+                        using (var sw = new StreamWriter(cs))
+                        {
+                            sw.Write(plainText);
+                        }
+
+                        return Convert.ToBase64String(ms.ToArray());
+                    }
                 }
             }
-            catch (CryptographicException e)
+            catch (Exception ex)
             {
-                Debug.WriteLine($"[FIH Class - Decrypt] -> A Cryptographic error occurred: {e.Message}");
-                return null;
+                MessageBox.Show($"An error occured when encrypting file: {ex.Message}", "Encrypting File");
             }
-            // You may want to catch more exceptions here...
+            return String.Empty;
         }
+        public string Decrypt(string cipherText, string key)
+        {
+            try
+            {
+                using (Aes aes = Aes.Create())
+                {
+                    aes.KeySize = 256;
+                    aes.BlockSize = 128;
+                    aes.Padding = PaddingMode.PKCS7;
+
+                    var keyBytes = new byte[32];
+                    var keyArray = Encoding.UTF8.GetBytes(key);
+                    Array.Copy(keyArray, keyBytes, Math.Min(keyBytes.Length, keyArray.Length));
+                    aes.Key = keyBytes;
+
+                    var bytes = Convert.FromBase64String(cipherText);
+                    aes.IV = bytes.AsSpan(0, 16).ToArray();
+
+                    using (var decryptor = aes.CreateDecryptor(aes.Key, aes.IV))
+                    using (var ms = new MemoryStream(bytes, 16, bytes.Length - 16))
+                    using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
+                    using (var sr = new StreamReader(cs))
+                    {
+                        return sr.ReadToEnd();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"An error occured when decrypting file: {ex.Message}", "Decrypting File");
+            }
+            return String.Empty;
+        }
+
 
         // MD5 Encryption
         public string MD5_Encrypt(string _Text, string _Hash)
