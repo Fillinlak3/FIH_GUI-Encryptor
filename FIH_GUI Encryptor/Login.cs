@@ -98,7 +98,7 @@ namespace FIH_GUI_Encryptor
 
         private void Login_Load(object sender, EventArgs e)
         {
-            using(System.Net.WebClient web = new System.Net.WebClient())
+            using (System.Net.WebClient web = new System.Net.WebClient())
             {
                 if (!web.DownloadString("https://pastebin.com/raw/4WLrwxQ4").Contains("1.0"))
                 {
@@ -135,13 +135,14 @@ namespace FIH_GUI_Encryptor
 
         private void Change_Password_Visibility(object sender, EventArgs e)
         {
-            if(Password_Visibility.IconChar == FontAwesome.Sharp.IconChar.Eye)
+            if (Password_Visibility.IconChar == FontAwesome.Sharp.IconChar.Eye)
             {
                 Password_Visibility.IconChar = FontAwesome.Sharp.IconChar.EyeSlash;
                 TextBox_Password.Text = String.Empty;
                 TextBox_Password.PasswordChar = '\0';
                 Debug.WriteLine("[Login] -> Password is shown.");
-            } else
+            }
+            else
             {
                 Password_Visibility.IconChar = FontAwesome.Sharp.IconChar.Eye;
                 TextBox_Password.Text = "Password";

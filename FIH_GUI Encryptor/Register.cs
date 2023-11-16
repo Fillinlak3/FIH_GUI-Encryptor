@@ -6,8 +6,6 @@ namespace FIH_GUI_Encryptor
 {
     public partial class Register : Form
     {
-        private readonly string db_source = @"Data Source=MIHAI\FIHENCRYPTOR;Initial Catalog=FIHEncryptorDatabase;Integrated Security=True";
-
         public Register()
         {
             InitializeComponent();
@@ -15,50 +13,7 @@ namespace FIH_GUI_Encryptor
 
         private void Button_goRegister_Click(object sender, EventArgs e)
         {
-            //try
-            //{
-            //    if ((String.IsNullOrEmpty(TextBox_FirstName.Text) || TextBox_FirstName.Text == "First Name") ||
-            //        (String.IsNullOrEmpty(TextBox_LastName.Text) || TextBox_LastName.Text == "Last Name") ||
-            //        (String.IsNullOrEmpty(TextBox_Email.Text) || TextBox_Email.Text == "Email") ||
-            //        (String.IsNullOrEmpty(TextBox_Username.Text) || TextBox_Username.Text == "Username") ||
-            //        (String.IsNullOrEmpty(TextBox_Password.Text) || TextBox_Password.Text == "Password"))
-            //        throw new Exception("Values cant be null or default.");
-
-            //    using (SqlConnection connection = new SqlConnection(db_source))
-            //    {
-            //        connection.Open();
-            //        SqlCommand cmd = connection.CreateCommand();
-
-            //        // Check if username already exists
-            //        cmd.CommandText = "SELECT Username FROM Accounts where Username = @user";
-            //        cmd.Parameters.AddWithValue("@user", TextBox_Username.Text);
-            //        using (SqlDataReader reader = cmd.ExecuteReader())
-            //        {
-            //            while (reader.Read())
-            //                if (Regex.Replace(reader[0].ToString(), @"\s+", "").Equals(TextBox_Username.Text))
-            //                    throw new Exception("Username is already taken.");
-            //        }
-
-            //        // Create new account
-            //        cmd.CommandText = "INSERT INTO Accounts (Username, Password, FirstName, LastName, Email) VALUES (@usr, @pass, @fn, @ln, @email)";
-            //        cmd.Parameters.AddWithValue("@usr", TextBox_Username.Text);
-            //        cmd.Parameters.AddWithValue("@pass", TextBox_Password.Text);
-            //        cmd.Parameters.AddWithValue("@fn", TextBox_FirstName.Text);
-            //        cmd.Parameters.AddWithValue("@ln", TextBox_LastName.Text);
-            //        cmd.Parameters.AddWithValue("@email", TextBox_Email.Text);
-            //        cmd.ExecuteNonQuery();
-            //        connection.Close();
-            //    }
-
-            //    Timer_DateTime.Enabled = false;
-            //    this.Hide();
-            //    new Login().ShowDialog();
-            //    this.Close();
-            //}
-            //catch (Exception exception)
-            //{
-            //    MessageBox.Show(exception.Message);
-            //}
+            
         }
 
         #region Keep textboxes filled and empty on click

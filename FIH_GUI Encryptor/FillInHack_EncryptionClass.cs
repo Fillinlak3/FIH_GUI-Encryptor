@@ -81,18 +81,30 @@ namespace FIH_GUI_Encryptor
             }
         }
 
+        // Key Generation
+        public string Generate_Key(int length = 32)
+        {
+            const string chars = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890`~!@#$%^&*()-_=+[{]};:\'\"\\|,<.>/?";
+            string key = string.Empty;
+            System.Random random = new System.Random();
+            for (int i = 0; i < length; i++)
+                key += chars[random.Next(0, 94)];
+
+            return key;
+        }
+
         // MD5 Encryption
         public string MD5_Encrypt(string _Text, string _Hash)
         {
-            byte[] data = System.Text.UTF8Encoding.UTF8.GetBytes(_Text);
-            using (System.Security.Cryptography.MD5CryptoServiceProvider md5 = new System.Security.Cryptography.MD5CryptoServiceProvider())
+            byte[] data = UTF8Encoding.UTF8.GetBytes(_Text);
+            using (var md5 = new MD5CryptoServiceProvider())
             {
-                byte[] key_hash = md5.ComputeHash(System.Text.UTF8Encoding.UTF8.GetBytes(_Hash));
-                using (System.Security.Cryptography.TripleDESCryptoServiceProvider triple_des = new System.Security.Cryptography.TripleDESCryptoServiceProvider() { Key = key_hash, Mode = System.Security.Cryptography.CipherMode.ECB, Padding = System.Security.Cryptography.PaddingMode.PKCS7 })
+                byte[] key_hash = md5.ComputeHash(UTF8Encoding.UTF8.GetBytes(_Hash));
+                using (var triple_des = new TripleDESCryptoServiceProvider() { Key = key_hash, Mode = CipherMode.ECB, Padding = PaddingMode.PKCS7 })
                 {
-                    System.Security.Cryptography.ICryptoTransform transform = triple_des.CreateEncryptor();
+                    ICryptoTransform transform = triple_des.CreateEncryptor();
                     byte[] result = transform.TransformFinalBlock(data, 0, data.Length);
-                    return System.Convert.ToBase64String(result, 0, result.Length);
+                    return Convert.ToBase64String(result, 0, result.Length);
                 }
             }
         }
@@ -124,15 +136,15 @@ namespace FIH_GUI_Encryptor
         }
         public string MD5_Decrypt(string _Text, string _Hash)
         {
-            byte[] data = System.Convert.FromBase64String(_Text);
-            using (System.Security.Cryptography.MD5CryptoServiceProvider md5 = new System.Security.Cryptography.MD5CryptoServiceProvider())
+            byte[] data = Convert.FromBase64String(_Text);
+            using (var md5 = new MD5CryptoServiceProvider())
             {
-                byte[] key_hash = md5.ComputeHash(System.Text.UTF8Encoding.UTF8.GetBytes(_Hash));
-                using (System.Security.Cryptography.TripleDESCryptoServiceProvider triple_des = new System.Security.Cryptography.TripleDESCryptoServiceProvider() { Key = key_hash, Mode = System.Security.Cryptography.CipherMode.ECB, Padding = System.Security.Cryptography.PaddingMode.PKCS7 })
+                byte[] key_hash = md5.ComputeHash(UTF8Encoding.UTF8.GetBytes(_Hash));
+                using (var triple_des = new TripleDESCryptoServiceProvider() { Key = key_hash, Mode = CipherMode.ECB, Padding = PaddingMode.PKCS7 })
                 {
-                    System.Security.Cryptography.ICryptoTransform transform = triple_des.CreateDecryptor();
+                    ICryptoTransform transform = triple_des.CreateDecryptor();
                     byte[] result = transform.TransformFinalBlock(data, 0, data.Length);
-                    return System.Text.UTF8Encoding.UTF8.GetString(result);
+                    return UTF8Encoding.UTF8.GetString(result);
                 }
             }
         }
@@ -151,18 +163,6 @@ namespace FIH_GUI_Encryptor
 
             System.GC.Collect();
             return _Text;
-        }
-
-        // Key Generation
-        public string Generate_Key(int length = 32)
-        {
-            const string chars = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890`~!@#$%^&*()-_=+[{]};:\'\"\\|,<.>/?";
-            string key = string.Empty;
-            System.Random random = new System.Random();
-            for (int i = 0; i < length; i++)
-                key += chars[random.Next(0, 94)];
-
-            return key;
-        }
+        } 
     }
 }
