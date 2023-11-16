@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Security.Cryptography.Xml;
 using System.Text;
 using System.Windows;
 using System.Windows.Input;
@@ -16,78 +17,69 @@ namespace FIH_GUI_Encryptor
         private const string _Encryption_IV = "n0&y)$MGjBt24?L8";
 
         // AES-256 bit Encryption
-        public string Encrypt(string plainText, string key)
+        public void Encrypt(Stream inputStream, Stream outputStream, string key)
         {
-            try
+            using (Aes aes = Aes.Create())
             {
-                using (Aes aes = Aes.Create())
+                aes.KeySize = 256;
+                aes.BlockSize = 128;
+                aes.Padding = PaddingMode.PKCS7;
+
+                var keyBytes = new byte[32];
+                var keyArray = Encoding.UTF8.GetBytes(key);
+                Array.Copy(keyArray, keyBytes, Math.Min(keyBytes.Length, keyArray.Length));
+                aes.Key = keyBytes;
+
+                aes.GenerateIV();
+
+                // Write IV to the output stream
+                outputStream.Write(aes.IV, 0, 16);
+
+                // Process the file in chunks
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                using (var encryptor = aes.CreateEncryptor(aes.Key, aes.IV))
+                using (var cryptoStream = new CryptoStream(outputStream, encryptor, CryptoStreamMode.Write))
                 {
-                    aes.KeySize = 256;
-                    aes.BlockSize = 128;
-                    aes.Padding = PaddingMode.PKCS7;
-
-                    var keyBytes = new byte[32];
-                    var keyArray = Encoding.UTF8.GetBytes(key);
-                    Array.Copy(keyArray, keyBytes, Math.Min(keyBytes.Length, keyArray.Length));
-                    aes.Key = keyBytes;
-
-                    aes.GenerateIV();
-
-                    using (var encryptor = aes.CreateEncryptor(aes.Key, aes.IV))
-                    using (var ms = new MemoryStream())
+                    while ((bytesRead = inputStream.Read(buffer, 0, buffer.Length)) > 0)
                     {
-                        ms.Write(aes.IV, 0, 16);
-
-                        using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
-                        using (var sw = new StreamWriter(cs))
-                        {
-                            sw.Write(plainText);
-                        }
-
-                        return Convert.ToBase64String(ms.ToArray());
+                        cryptoStream.Write(buffer, 0, bytesRead);
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"An error occured when encrypting file: {ex.Message}", "Encrypting File");
-            }
-            return String.Empty;
         }
-        public string Decrypt(string cipherText, string key)
+
+        public void Decrypt(Stream inputStream, Stream outputStream, string key)
         {
-            try
+            using (Aes aes = Aes.Create())
             {
-                using (Aes aes = Aes.Create())
+                aes.KeySize = 256;
+                aes.BlockSize = 128;
+                aes.Padding = PaddingMode.PKCS7;
+
+                var keyBytes = new byte[32];
+                var keyArray = Encoding.UTF8.GetBytes(key);
+                Array.Copy(keyArray, keyBytes, Math.Min(keyBytes.Length, keyArray.Length));
+                aes.Key = keyBytes;
+
+                // Read IV from the input stream
+                byte[] iv = new byte[16];
+                inputStream.Read(iv, 0, 16);
+                aes.IV = iv;
+
+                // Process the file in chunks
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                using (var decryptor = aes.CreateDecryptor(aes.Key, aes.IV))
+                using (var cryptoStream = new CryptoStream(inputStream, decryptor, CryptoStreamMode.Read))
                 {
-                    aes.KeySize = 256;
-                    aes.BlockSize = 128;
-                    aes.Padding = PaddingMode.PKCS7;
-
-                    var keyBytes = new byte[32];
-                    var keyArray = Encoding.UTF8.GetBytes(key);
-                    Array.Copy(keyArray, keyBytes, Math.Min(keyBytes.Length, keyArray.Length));
-                    aes.Key = keyBytes;
-
-                    var bytes = Convert.FromBase64String(cipherText);
-                    aes.IV = bytes.AsSpan(0, 16).ToArray();
-
-                    using (var decryptor = aes.CreateDecryptor(aes.Key, aes.IV))
-                    using (var ms = new MemoryStream(bytes, 16, bytes.Length - 16))
-                    using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
-                    using (var sr = new StreamReader(cs))
+                    while ((bytesRead = cryptoStream.Read(buffer, 0, buffer.Length)) > 0)
                     {
-                        return sr.ReadToEnd();
+                        outputStream.Write(buffer, 0, bytesRead);
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"An error occured when decrypting file: {ex.Message}", "Decrypting File");
-            }
-            return String.Empty;
         }
-
 
         // MD5 Encryption
         public string MD5_Encrypt(string _Text, string _Hash)

@@ -71,7 +71,7 @@ namespace FIH_GUI_Encryptor
         {
             try
             {
-                if (TextBox_Username.Text == "admin" && TextBox_Password.Text == "admin")
+                if (TextBox_Username.Text == "Fillinlak3" && TextBox_Password.Text == "admin")
                 {
                     Timer_DateTime.Enabled = false;
                     username = TextBox_Username.Text;

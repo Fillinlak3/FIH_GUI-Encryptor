@@ -1,8 +1,12 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Security.Cryptography.Xml;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
+using System.Runtime.InteropServices;
+
 
 namespace FIH_GUI_Encryptor
 {
@@ -15,6 +19,22 @@ namespace FIH_GUI_Encryptor
         private readonly System.Collections.Generic.List<String> quotes = new System.Collections.Generic.List<String>(5) { "You can select multitple files to encrypt / decrypt.",
             "FIH Encryptor was created on 12/16/2020.", "The developer of the program is only 17 years old.",
             "FIH Encryptor is the most secure encrypting program.", "You can press About button for more informations."};
+        #endregion
+
+        #region DLL IMPORTS
+        private static bool debugMode = false;
+        private static IntPtr consoleHandle;
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool AllocConsole();
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool FreeConsole();
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr GetConsoleWindow();
         #endregion
 
         #region Main Form Class
@@ -62,6 +82,36 @@ namespace FIH_GUI_Encryptor
 
         // Debug Mode
         #region Debug_Mode
+        private void ConsoleMessage(string message)
+        {
+            if (consoleHandle != IntPtr.Zero)
+                Console.WriteLine(message);
+        }
+
+        private void LogWrite(string WhoSends, params object[] values)
+        {
+            if (consoleHandle != IntPtr.Zero)
+            {
+                Console.Write($"{(WhoSends[0]=='\r'?'\r':"")}[{DateTime.Now.ToString("dd/MM/yy-HH:mm:ss:ff")}#{WhoSends}] info: ");
+                foreach (var val in values)
+                {
+                    Console.Write(val);
+                }
+            }
+        }
+
+        private void LogWriteLine(string WhoSends, params object[] values)
+        {
+            if (consoleHandle != IntPtr.Zero)
+            {
+                Console.Write($"[{DateTime.Now.ToString("dd/MM/yy-HH:mm:ss:ff")}#{WhoSends}] info: ");
+                foreach (var val in values)
+                {
+                    Console.Write(val);
+                }
+                Console.WriteLine();
+            }
+        }
         private void Main_Form_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Escape)
@@ -80,26 +130,34 @@ namespace FIH_GUI_Encryptor
 
 
             else if ((e.Control && e.Shift && e.Alt && e.KeyCode == Keys.F5) && Label_Username.Text == "Fillinlak3")
+            {
+                Debug_Mode = !Debug_Mode;
+
                 switch (Debug_Mode)
                 {
                     case false:
                     {
-                        MessageBox.Show("Debug Mode - ON");
-                        Debug_Mode = true;
+                        MessageBox.Show("Debug Mode - OFF");
+                        if (consoleHandle != IntPtr.Zero)
+                        {
+                            FreeConsole();
+                            consoleHandle = IntPtr.Zero;
+                        }
                         break;
                     }
-
                     case true:
                     {
-                        MessageBox.Show("Debug Mode - OFF");
-                        Debug_Mode = false;
+                        MessageBox.Show("Debug Mode - ON");
+                        if (consoleHandle == IntPtr.Zero)
+                        {
+                            AllocConsole();
+                            consoleHandle = GetConsoleWindow();
+                            ConsoleMessage("<*> Debugging Active <*>");
+                        }
                         break;
                     }
-
-                    default:
-                        Debug_Mode = false;
-                        break;
                 }
+            }
         }
         #endregion
 
@@ -300,21 +358,35 @@ namespace FIH_GUI_Encryptor
             if (file_names.Count != 0)
             {
                 using (FillInHack fih = new FillInHack()) Generated_Key = fih.Generate_Key();
+                LogWriteLine("[Encryption]", "Generated encryption key: ", Generated_Key);
+                LogWriteLine("[Encryption]", $"Process Started, encrypting {file_names.Count} file(s).");
                 foreach (string file in file_names)
                 {
-                    string text_data = "";
                     try
                     {
-                        text_data = File.ReadAllText(file, System.Text.Encoding.Default);
+                        if (File.ReadAllBytes(file).Length == 0) throw new ArgumentException("Cannot encrypt an empty file. Operation aborted.");
                         using (FillInHack fih = new FillInHack())
                         {
-                            File.WriteAllText(file, $"FillInHack!{fih.Encrypt(text_data, Generated_Key)}", System.Text.Encoding.Default);
+                            string encryptedFile = file.Substring(0, file.LastIndexOf(".") + 1) + "encrypted";
+                            string newFile = file + ".gxPfZY2TX";
+                            using (FileStream inputFileStream = new FileStream(file, FileMode.Open, FileAccess.Read))
+                            using (FileStream encryptedFileStream = new FileStream(encryptedFile, FileMode.Create, FileAccess.Write))
+                            {
+                                // Write "FillInHack!" string during encryption
+                                byte[] hackBytes = Encoding.UTF8.GetBytes("FillInHack!");
+                                encryptedFileStream.Write(hackBytes, 0, hackBytes.Length);
+
+                                fih.Encrypt(inputFileStream, encryptedFileStream, Generated_Key);
+                            }
+                            File.Delete(file);
+                            File.Move(encryptedFile, newFile);
+                            Console.CursorLeft = 50;
+                            LogWrite("\rEncryption", $"Done {file_names.IndexOf(file) + 1}/{file_names.Count} files.");
                         }
-                        File.Move(file, file + ".gxPfZY2TX");
                     }
-                    catch (Exception exception)
+                    catch (Exception ex)
                     {
-                        MessageBox.Show(exception.Message, "FIH Encryptor - Fatal error");
+                        MessageBox.Show(ex.Message, "FIH Encryptor - Fatal error");
                         return;
                     }
                 }
@@ -375,34 +447,38 @@ namespace FIH_GUI_Encryptor
                     return;
                 }
                 
-                foreach (string files in file_names)
+                foreach (string file in file_names)
                 {
-                    string text_data = "";
                     try
                     {
-                        text_data = File.ReadAllText(files, System.Text.Encoding.Default);
-                        if (text_data.Contains("FillInHack!") && text_data.StartsWith("FillInHack!") && files.EndsWith(".gxPfZY2TX"))
+                        if (File.ReadAllBytes(file).Length == 0) throw new ArgumentException("Cannot decrypt an empty file. Operation aborted.");
+                        using (FillInHack fih = new FillInHack())
                         {
-                            text_data = text_data.Remove(0, 11);
-                            using (FillInHack fih = new FillInHack())
+                            string decryptedFile = file.Substring(0, file.LastIndexOf(".") + 1) + "encrypted";
+                            string newFile = file.Substring(0, file.LastIndexOf("."));
+                            using (FileStream encryptedFileStream = new FileStream(file, FileMode.Open, FileAccess.Read))
+                            using (FileStream decryptedFileStream = new FileStream(decryptedFile, FileMode.Create, FileAccess.Write))
                             {
-                                File.WriteAllText(files, fih.Decrypt(text_data, Generated_Key), System.Text.Encoding.Default);
-                                Debug.WriteLine($"Text: {text_data}");
+                                // Read and verify "FillInHack!" string during decryption
+                                byte[] hackBytes = new byte[11];
+                                encryptedFileStream.Read(hackBytes, 0, hackBytes.Length);
+                                string hackString = Encoding.UTF8.GetString(hackBytes);
+                                if (hackString != "FillInHack!") throw new ArgumentException("File content was altered and it is no longer recoverable.");
+
+                                fih.Decrypt(encryptedFileStream, decryptedFileStream, Generated_Key);
                             }
-                            File.Move(files, files.Remove(files.Length - 10, 10));
+                            File.Delete(file);
+                            File.Move(decryptedFile, newFile);
                         }
                     }
-                    catch (Exception exception)
+                    catch (Exception ex)
                     {
-                        MessageBox.Show(("Invalid Key (" + exception.Message + ")"), "FIH Encryptor - Fatal error");
+                        MessageBox.Show($"Invalid Key. {ex.Message}", "FIH Encryptor - Fatal error");
                         return;
                     }
                 }
                 MessageBox.Show("Successfully Decrypted Files!");
                 Generated_Key = "";
-
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
             }
             else MessageBox.Show("No Files selected..");
         }
