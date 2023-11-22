@@ -300,8 +300,6 @@ namespace FIH_GUI_Encryptor
                         File.Delete(file);
                         File.Move(encryptedFile, resultFile);
                         ConsoleLog.RewriteOnLine(-1 - brokenFiles.Count, "Encryption", $"Done {file_names.IndexOf(file) + 1}/{file_names.Count} files.");
-                        if ((file_names.IndexOf(file) + 1) % 4 == 0)
-                            throw new ArgumentException("la fiecare qvd dam eroare");
                     }
                     catch (Exception ex)
                     {

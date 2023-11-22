@@ -32,7 +32,7 @@ namespace FIH_GUI_Encryptor
                 Console.Write(val);
 
             // Resume to the last message written on the console.
-            SetCursorPos(0, numberOfLines);
+            Console.CursorTop = numberOfLines;
         }
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace FIH_GUI_Encryptor
 
             numberOfLines++;
             // Resume to the last message written on the console.
-            SetCursorPos(0, numberOfLines);
+            Console.CursorTop = numberOfLines;
         }
         public static void WriteLine()
         {
@@ -67,7 +67,7 @@ namespace FIH_GUI_Encryptor
 
             numberOfLines++;
             // Resume to the last message written on the console.
-            SetCursorPos(0, numberOfLines);
+            Console.CursorTop = numberOfLines;
         }
 
         /// <summary>
@@ -86,7 +86,6 @@ namespace FIH_GUI_Encryptor
             if (consoleHandle == IntPtr.Zero) return;
 
             int currentTop = Console.CursorTop;
-            int maxLines = Console.WindowHeight;
 
             if (WhichLine < 0)
             {
@@ -97,11 +96,6 @@ namespace FIH_GUI_Encryptor
             {
                 // If positive, limit to the number of lines written
                 WhichLine = numberOfLines;
-            }
-
-            if (WhichLine >= maxLines)
-            {
-                throw new ArgumentException("Cannot write outside the console's buffer.");
             }
 
             // Move the cursor to the specified line
@@ -120,7 +114,7 @@ namespace FIH_GUI_Encryptor
                 Console.Write(val);
 
             // Restore the cursor to the original position
-            SetCursorPos(0, currentTop);
+            Console.CursorTop = currentTop;
         }
 
         public static void ShowConsole(bool restore)
@@ -145,8 +139,6 @@ namespace FIH_GUI_Encryptor
 
         [DllImport("user32.dll")]
         static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-        [DllImport("user32.dll")]
-        static extern bool SetCursorPos(int X, int Y);
         #endregion
     }
 }
