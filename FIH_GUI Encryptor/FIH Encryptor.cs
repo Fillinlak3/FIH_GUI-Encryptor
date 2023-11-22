@@ -2,36 +2,18 @@
 using System.IO;
 using System.Text;
 using System.Windows.Forms;
-using System.Runtime.InteropServices;
-using System.Diagnostics;
+using System.Collections.Generic;
 
 namespace FIH_GUI_Encryptor
 {
     public partial class Main_Form : Form
     {
         #region Class's Variables
-        private bool Debug_Mode = false;
-        protected static string Generated_Key = "";
-        private readonly System.Collections.Generic.List<String> file_names = new System.Collections.Generic.List<String>();
-        private readonly System.Collections.Generic.List<String> quotes = new System.Collections.Generic.List<String>(5) { "You can select multitple files to encrypt / decrypt.",
+        public static string Generated_Key = "";
+        private readonly List<String> file_names = new List<String>();
+        private readonly List<String> quotes = new List<String>(5) { "You can select multitple files to encrypt / decrypt.",
             "FIH Encryptor was created on 12/16/2020.", "The developer of the program is only 17 years old.",
             "FIH Encryptor is the most secure encrypting program.", "You can press About button for more informations."};
-        #endregion
-
-        #region DLL IMPORTS
-        private static bool debugMode = false;
-        private static IntPtr consoleHandle;
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool AllocConsole();
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool FreeConsole();
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern IntPtr GetConsoleWindow();
         #endregion
 
         #region Main Form Class
@@ -48,7 +30,6 @@ namespace FIH_GUI_Encryptor
             UserSettings_Default();
             Pick_Quote();
             Panel_Greetings.Visible = true;
-            consoleHandle = IntPtr.Zero;
         }
 
         // Setup
@@ -77,42 +58,6 @@ namespace FIH_GUI_Encryptor
 
         // Debug Mode
         #region Debug_Mode
-        private void ConsoleMessage(string message)
-        {
-            if (consoleHandle != IntPtr.Zero)
-                Console.WriteLine(message);
-        }
-        private void LogWrite(string WhoSends, params object[] values)
-        {
-            if (consoleHandle != IntPtr.Zero)
-            {
-                Console.Write($"{(WhoSends[0] == '\r' ? WhoSends[0] : "")}[{DateTime.Now.ToString("dd/MM/yy-HH:mm:ss:ff")} # ");
-                Console.ForegroundColor = ConsoleColor.Magenta;
-                Console.Write(WhoSends);
-                Console.ResetColor();
-                Console.Write("] info: ");
-                foreach (var val in values)
-                {
-                    Console.Write(val);
-                }
-            }
-        }
-        private void LogWriteLine(string WhoSends, params object[] values)
-        {
-            if (consoleHandle != IntPtr.Zero)
-            {
-                Console.Write($"[{DateTime.Now.ToString("dd/MM/yy-HH:mm:ss:ff")} # ");
-                Console.ForegroundColor = ConsoleColor.Magenta;
-                Console.Write(WhoSends);
-                Console.ResetColor();
-                Console.Write("] info: ");
-                foreach (var val in values)
-                {
-                    Console.Write(val);
-                }
-                Console.WriteLine();
-            }
-        }
         private void Main_Form_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Escape)
@@ -127,38 +72,6 @@ namespace FIH_GUI_Encryptor
                 Button_Decrypt_Text_Click(null, null);
             else if (e.Control && e.KeyCode == Keys.L)
                 Button_SignOut_Click(null, null);
-
-
-
-            else if ((e.Control && e.Shift && e.Alt && e.KeyCode == Keys.F5) && Label_Username.Text == "Fillinlak3")
-            {
-                Debug_Mode = !Debug_Mode;
-
-                switch (Debug_Mode)
-                {
-                    case false:
-                        {
-                            MessageBox.Show("Debug Mode - OFF");
-                            if (consoleHandle != IntPtr.Zero)
-                            {
-                                FreeConsole();
-                                consoleHandle = IntPtr.Zero;
-                            }
-                            break;
-                        }
-                    case true:
-                        {
-                            MessageBox.Show("Debug Mode - ON");
-                            if (consoleHandle == IntPtr.Zero)
-                            {
-                                AllocConsole();
-                                consoleHandle = GetConsoleWindow();
-                                ConsoleMessage("<*> Debugging Active <*>");
-                            }
-                            break;
-                        }
-                }
-            }
         }
         #endregion
 
@@ -223,14 +136,10 @@ namespace FIH_GUI_Encryptor
         private void Button_SignOut_Click(object sender, EventArgs e)
         {
             Generated_Key = "";
-            Debug_Mode = false;
 
             this.Hide();
             new Login().ShowDialog();
             this.Close();
-
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
         }
         // ===============================================================================
         #endregion
@@ -277,10 +186,8 @@ namespace FIH_GUI_Encryptor
             {
                 try
                 {
-                    using (FillInHack fih = new FillInHack())
-                    {
-                        TextBox_Encrypt_Text.Text = fih.MD5_Encrypt(TextBox_Encrypt_Text.Text, TextBox_Encrypt_Text_Key.Text);
-                    }
+                    FillInHack fih = new FillInHack();
+                    TextBox_Encrypt_Text.Text = fih.MD5_Encrypt(TextBox_Encrypt_Text.Text, TextBox_Encrypt_Text_Key.Text);
                 }
                 catch (Exception exc)
                 {
@@ -302,10 +209,8 @@ namespace FIH_GUI_Encryptor
             {
                 try
                 {
-                    using (FillInHack fih = new FillInHack())
-                    {
-                        TextBox_Decrypt_Text.Text = fih.MD5_Decrypt(TextBox_Decrypt_Text.Text, TextBox_Decrypt_Text_Key.Text);
-                    }
+                    FillInHack fih = new FillInHack();
+                    TextBox_Decrypt_Text.Text = fih.MD5_Decrypt(TextBox_Decrypt_Text.Text, TextBox_Decrypt_Text_Key.Text);
                 }
                 catch (Exception exc)
                 {
@@ -350,7 +255,7 @@ namespace FIH_GUI_Encryptor
                     Encrypted_Files_Selected.Text += files + Environment.NewLine;
                     file_names.Add(files);
                 }
-                LogWriteLine("Encryption", $"Successfully loaded {file_names.Count} files.");
+                ConsoleLog.WriteLine("Encryption", $"Successfully loaded {file_names.Count} files.");
             }
             if (file_names.Count == 0)
                 Encrypted_Files_Selected.Text = "No files chosen..";
@@ -359,9 +264,13 @@ namespace FIH_GUI_Encryptor
         {
             if (file_names.Count != 0)
             {
-                using (FillInHack fih = new FillInHack()) Generated_Key = fih.Generate_Key();
-                LogWriteLine("Encryption", "Generated encryption key: ", Generated_Key);
-                LogWriteLine("Encryption", $"Process Started, encrypting {file_names.Count} file(s).");
+                List<String> brokenFiles = new List<String>();
+                FillInHack fih = new FillInHack();
+                Generated_Key = fih.Generate_Key();
+                ConsoleLog.WriteLine("Encryption", "Generated encryption key: ", Generated_Key);
+                ConsoleLog.WriteLine("Encryption", $"Process Started, encrypting {file_names.Count} file(s).");
+                ConsoleLog.WriteLine();
+                ConsoleLog.WriteLine();
                 foreach (string file in file_names)
                 {
                     string backupFile = string.Empty;
@@ -370,39 +279,42 @@ namespace FIH_GUI_Encryptor
                     try
                     {
                         if (File.ReadAllBytes(file).Length == 0) throw new ArgumentException("Cannot encrypt an empty file. Operation aborted.");
-                        using (FillInHack fih = new FillInHack())
+                        // Backup the file first to prevent data loss.
+                        backupFile = Path.GetTempFileName();
+                        ConsoleLog.RewriteOnLine(-2 - brokenFiles.Count, "Encryption", $"Backup file created: {backupFile}");
+                        File.Copy(file, backupFile, true);
+                        // Create new file names.
+                        encryptedFile = file.Substring(0, file.LastIndexOf(".") + 1) + "encrypted";
+                        resultFile = file + ".gxPfZY2TX";
+                        // Encrypt block by block and write file.
+                        using (FileStream inputFileStream = new FileStream(file, FileMode.Open, FileAccess.Read))
+                        using (FileStream encryptedFileStream = new FileStream(encryptedFile, FileMode.Create, FileAccess.Write))
                         {
-                            // Backup the file first to prevent data loss.
-                            backupFile = Path.GetTempFileName();
-                            LogWriteLine("Encryption", $"Backup file created: {backupFile}");
-                            File.Copy(file, backupFile, true);
-                            // Create new file names.
-                            encryptedFile = file.Substring(0, file.LastIndexOf(".") + 1) + "encrypted";
-                            resultFile = file + ".gxPfZY2TX";
-                            // Encrypt block by block and write file.
-                            using (FileStream inputFileStream = new FileStream(file, FileMode.Open, FileAccess.Read))
-                            using (FileStream encryptedFileStream = new FileStream(encryptedFile, FileMode.Create, FileAccess.Write))
-                            {
-                                // Write "FillInHack!" string during encryption
-                                byte[] hackBytes = Encoding.UTF8.GetBytes("FillInHack!");
-                                encryptedFileStream.Write(hackBytes, 0, hackBytes.Length);
+                            // Write "FillInHack!" string during encryption
+                            byte[] hackBytes = Encoding.UTF8.GetBytes("FillInHack!");
+                            encryptedFileStream.Write(hackBytes, 0, hackBytes.Length);
 
-                                fih.Encrypt(inputFileStream, encryptedFileStream, Generated_Key);
-                            }
-                            // Move from file.encrypted to original file name.
-                            File.Delete(file);
-                            File.Move(encryptedFile, resultFile);
-                            LogWrite("\rEncryption", $"Done {file_names.IndexOf(file) + 1}/{file_names.Count} files.");
+                            fih.Encrypt(inputFileStream, encryptedFileStream, Generated_Key);
                         }
+                        // Move from file.encrypted to original file name.
+                        File.Delete(file);
+                        File.Move(encryptedFile, resultFile);
+                        ConsoleLog.RewriteOnLine(-1 - brokenFiles.Count, "Encryption", $"Done {file_names.IndexOf(file) + 1}/{file_names.Count} files.");
+                        if ((file_names.IndexOf(file) + 1) % 4 == 0)
+                            throw new ArgumentException("la fiecare qvd dam eroare");
                     }
                     catch (Exception ex)
                     {
                         MessageBox.Show(ex.Message, "FIH Encryptor - Fatal error");
-                        // Restore backup.
-                        File.Copy(backupFile, file, true);
+                        brokenFiles.Add(file);
+                        // Check if backup file exists and recoverable, then restore.
+                        if (File.Exists(backupFile) && File.ReadAllBytes(backupFile).Length > 0)
+                        {
+                            File.Copy(backupFile, file, true);
+                            ConsoleLog.WriteLine("Encryption", $"File ({file.Substring(file.LastIndexOf('\\') + 1)}) backup restored, temporary and modified files erased.");
+                        }
                         // Delete the result file ONLY when an error is thrown. Otherwise the file is correctly encrypted.
                         if (File.Exists(resultFile)) File.Delete(resultFile);
-                        LogWriteLine("Encryption", $"Error caught:\n{ex.Message}. Backup restored, temporary and modified files erased.");
                     }
                     finally
                     {
@@ -411,7 +323,10 @@ namespace FIH_GUI_Encryptor
                         if (File.Exists(encryptedFile)) File.Delete(encryptedFile);
                     }
                 }
-                MessageBox.Show("Successfully Encrypted Files!\nKey is copied in your clipboard.");
+                if (brokenFiles.Count == file_names.Count)
+                { MessageBox.Show("Couldn't encrypt any file!\nOperation aborted."); return; }
+
+                MessageBox.Show($"Successfully encrypted {file_names.Count - brokenFiles.Count}/{file_names.Count} files!\nKey is copied in your clipboard.");
                 Clipboard.SetText(Generated_Key);
                 Generated_Key = "";
             }
@@ -444,7 +359,7 @@ namespace FIH_GUI_Encryptor
                     Decrypted_Files_Selected.Text += files + Environment.NewLine;
                     file_names.Add(files);
                 }
-                LogWriteLine("Decryption", $"Successfully loaded {file_names.Count} files.");
+                ConsoleLog.WriteLine("Decryption", $"Successfully loaded {file_names.Count} files.");
             }
             if (file_names.Count == 0)
                 Encrypted_Files_Selected.Text = "No files chosen..";
@@ -456,6 +371,7 @@ namespace FIH_GUI_Encryptor
         {
             if (file_names.Count != 0)
             {
+                List<String> brokenFiles = new List<String>();
                 Generated_Key = Microsoft.VisualBasic.Interaction.InputBox("Enter the secret key", "FIH Encryptor", "", -1, -1);
                 if (Generated_Key.Length != 32)
                 {
@@ -464,8 +380,10 @@ namespace FIH_GUI_Encryptor
                     return;
                 }
 
-                LogWriteLine("Decryption", "Loaded decryption key: ", Generated_Key);
-                LogWriteLine("Decryption", $"Process Started, decrypting {file_names.Count} file(s).");
+                ConsoleLog.WriteLine("Decryption", "Loaded decryption key: ", Generated_Key);
+                ConsoleLog.WriteLine("Decryption", $"Process Started, decrypting {file_names.Count} file(s).");
+                ConsoleLog.WriteLine();
+                ConsoleLog.WriteLine();
                 foreach (string file in file_names)
                 {
                     string backupFile = string.Empty;
@@ -474,40 +392,42 @@ namespace FIH_GUI_Encryptor
                     try
                     {
                         if (File.ReadAllBytes(file).Length == 0) throw new ArgumentException("Cannot decrypt an empty file. Operation aborted.");
-                        using (FillInHack fih = new FillInHack())
+                        FillInHack fih = new FillInHack();
+                        // Backup the file first to prevent data loss.
+                        backupFile = Path.GetTempFileName();
+                        ConsoleLog.RewriteOnLine(-2 - brokenFiles.Count, "Decryption", $"Backup file created: {backupFile}");
+                        File.Copy(file, backupFile, true);
+                        // Create new file names.
+                        decryptedFile = file.Substring(0, file.LastIndexOf(".") + 1) + "encrypted";
+                        resultFile = file.Substring(0, file.LastIndexOf("."));
+                        using (FileStream encryptedFileStream = new FileStream(file, FileMode.Open, FileAccess.Read))
+                        using (FileStream decryptedFileStream = new FileStream(decryptedFile, FileMode.Create, FileAccess.Write))
                         {
-                            // Backup the file first to prevent data loss.
-                            backupFile = Path.GetTempFileName();
-                            LogWriteLine("Decryption", $"Backup file created: {backupFile}");
-                            File.Copy(file, backupFile, true);
-                            // Create new file names.
-                            decryptedFile = file.Substring(0, file.LastIndexOf(".") + 1) + "encrypted";
-                            resultFile = file.Substring(0, file.LastIndexOf("."));
-                            using (FileStream encryptedFileStream = new FileStream(file, FileMode.Open, FileAccess.Read))
-                            using (FileStream decryptedFileStream = new FileStream(decryptedFile, FileMode.Create, FileAccess.Write))
-                            {
-                                // Read and verify "FillInHack!" string during decryption
-                                byte[] hackBytes = new byte[11];
-                                encryptedFileStream.Read(hackBytes, 0, hackBytes.Length);
-                                string hackString = Encoding.UTF8.GetString(hackBytes);
-                                if (hackString != "FillInHack!") throw new ArgumentException("File content was altered and it is no longer recoverable.");
+                            // Read and verify "FillInHack!" string during decryption
+                            byte[] hackBytes = new byte[11];
+                            encryptedFileStream.Read(hackBytes, 0, hackBytes.Length);
+                            string hackString = Encoding.UTF8.GetString(hackBytes);
+                            if (hackString != "FillInHack!") throw new ArgumentException("File content was altered and it is no longer recoverable.");
 
-                                fih.Decrypt(encryptedFileStream, decryptedFileStream, Generated_Key);
-                            }
-                            // Move from file.encrypted to original file name.
-                            File.Delete(file);
-                            File.Move(decryptedFile, resultFile);
-                            LogWrite("\rDecryption", $"Done {file_names.IndexOf(file) + 1}/{file_names.Count} files.");
+                            fih.Decrypt(encryptedFileStream, decryptedFileStream, Generated_Key);
                         }
+                        // Move from file.encrypted to original file name.
+                        File.Delete(file);
+                        File.Move(decryptedFile, resultFile);
+                        ConsoleLog.RewriteOnLine(-1 - brokenFiles.Count, "Encryption", $"Done {file_names.IndexOf(file) + 1}/{file_names.Count} files.");
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"Invalid Key. {ex.Message}", "FIH Encryptor - Fatal error");
-                        // Restore backup.
-                        File.Copy(backupFile, file, true);
+                        MessageBox.Show(ex.Message, "FIH Encryptor - Fatal error");
+                        brokenFiles.Add(file);
+                        // Check if backup file exists and recoverable, then restore.
+                        if (File.Exists(backupFile) && File.ReadAllBytes(backupFile).Length > 0)
+                        {
+                            File.Copy(backupFile, file, true);
+                            ConsoleLog.WriteLine("Encryption", $"File ({file.Substring(file.LastIndexOf('\\') + 1)}) backup restored, temporary and modified files erased.");
+                        }
                         // Delete the result file ONLY when an error is thrown. Otherwise the file is correctly encrypted.
                         if (File.Exists(resultFile)) File.Delete(resultFile);
-                        LogWriteLine("Encryption", $"Error caught:\n{ex.Message}. Backup restored, temporary and modified files erased.");
                     }
                     finally
                     {

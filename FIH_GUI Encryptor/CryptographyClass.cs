@@ -10,7 +10,7 @@ using System.Windows.Input;
 
 namespace FIH_GUI_Encryptor
 {
-    public class FillInHack : Main_Form
+    public class FillInHack
     {
         private const string _Encryption_Key = ".[]n>qh*Z|g4vJf*\"/\"N>[c*\\W\'O4zH#";
         private const string _Encryption_Private_Self_Key = "@>_{[FIH]}_F1!#i2/l3l$4I5\'.n!6\\H7^a8c~9&k0*`]/?_<#";
@@ -163,6 +163,6 @@ namespace FIH_GUI_Encryptor
 
             System.GC.Collect();
             return _Text;
-        } 
+        }
     }
 }
