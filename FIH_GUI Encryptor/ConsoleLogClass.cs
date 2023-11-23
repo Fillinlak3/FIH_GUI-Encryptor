@@ -1,10 +1,9 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace FIH_GUI_Encryptor
 {
-    public class ConsoleLog
+    public partial class ConsoleLog
     {
         private static int numberOfLines = 0;
         public static readonly int SW_HIDE = 0;

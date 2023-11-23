@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 namespace FIH_GUI_Encryptor

@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 namespace FIH_GUI_Encryptor
@@ -77,16 +75,13 @@ namespace FIH_GUI_Encryptor
                     username = TextBox_Username.Text;
                     password = TextBox_Password.Text;
 
-                    Debug.WriteLine($"[Login] - Successfully logged as: {username}:{password}");
-                    Debug.WriteLine($"[Timer_DateTime - state] -> {Timer_DateTime.Enabled}");
                     this.Hide();
                     new Main_Form().ShowDialog();
                     this.Close();
                 }
                 else
                 {
-                    MessageBox.Show("Wrong username or password, try again!");
-                    Debug.WriteLine($"[Login] -> Login denied, user tried: {username}:{password}");
+                    MessageBox.Show("Wrong username or password, try again!", "Login - Wrong credentials", MessageBoxButtons.OK);
                 }
             }
             catch (Exception exception)
@@ -100,10 +95,28 @@ namespace FIH_GUI_Encryptor
         {
             using (System.Net.WebClient web = new System.Net.WebClient())
             {
-                if (!web.DownloadString("https://pastebin.com/raw/4WLrwxQ4").Contains("1.0"))
+                while (true)
                 {
-                    MessageBox.Show($"New FIH Encryptor version available!\nExpected version: {web.DownloadString("https://pastebin.com/raw/4WLrwxQ4")}\nYou have version: {Program_Version}", "FIH Encryptor - Fatal Error");
-                    Application.Exit();
+                    try
+                    {
+                        if (!web.DownloadString("https://pastebin.com/raw/4WLrwxQ4").Contains("1.0"))
+                        {
+                            MessageBox.Show($"New FIH Encryptor version available!\nExpected version: {web.DownloadString("https://pastebin.com/raw/4WLrwxQ4")}\nYou have version: {Program_Version}", "FIH Encryptor - Fatal Error");
+                            Application.Exit();
+                        }
+                        ConsoleLog.WriteLine("<Authentificator>", "Program version is OK");
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        var result = MessageBox.Show("Couldn't retrieve server information. No internet.", "Login - Fatal Error", MessageBoxButtons.RetryCancel);
+                        ConsoleLog.WriteLine("<Authentificator>", $"Error obtaining version: {ex.Message}");
+                        if (result == DialogResult.Cancel)
+                        {
+                            // Exit the app.
+                            Application.Exit();
+                        }
+                    }
                 }
             }
         }
