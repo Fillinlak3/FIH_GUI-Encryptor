@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Windows.Forms;
 
@@ -43,54 +44,6 @@ namespace FIH_GUI_Encryptor
             base.WndProc(ref m);
         }
 
-        private void Button_Exit_Click(object sender, EventArgs e)
-        {
-            Application.Exit();
-        }
-
-        private void Timer_DateTime_Tick(object sender, EventArgs e)
-        {
-            Label_Time.Text = DateTime.Now.ToString("hh:mm:ss tt");
-        }
-
-        private void TextBox_Username_MouseClick(object sender, MouseEventArgs e)
-        {
-            if (TextBox_Username.Text == "Username")
-                TextBox_Username.Text = "";
-        }
-
-        private void TextBox_Password_MouseClick(object sender, MouseEventArgs e)
-        {
-            if (TextBox_Password.Text == "Password")
-                TextBox_Password.Text = "";
-        }
-
-        private void Button_SignIn_MouseClick(object sender, MouseEventArgs e)
-        {
-            try
-            {
-                if (TextBox_Username.Text == "Fillinlak3" && TextBox_Password.Text == "admin")
-                {
-                    Timer_DateTime.Enabled = false;
-                    username = TextBox_Username.Text;
-                    password = TextBox_Password.Text;
-
-                    this.Hide();
-                    new Main_Form().ShowDialog();
-                    this.Close();
-                }
-                else
-                {
-                    MessageBox.Show("Wrong username or password, try again!", "Login - Wrong credentials", MessageBoxButtons.OK);
-                }
-            }
-            catch (Exception exception)
-            {
-                MessageBox.Show(exception.Message);
-                Debug.WriteLine($"[Login] -> Login exception thrown: {exception.Message}");
-            }
-        }
-
         private void Login_Load(object sender, EventArgs e)
         {
             using (System.Net.WebClient web = new System.Net.WebClient())
@@ -119,6 +72,66 @@ namespace FIH_GUI_Encryptor
                     }
                 }
             }
+        }
+
+        private async void Button_SignIn_MouseClick(object sender, MouseEventArgs e)
+        {
+            try
+            {
+                if (String.IsNullOrWhiteSpace(TextBox_Username.Text) || TextBox_Username.Text.ToLower() == "username" ||
+                    String.IsNullOrWhiteSpace(TextBox_Password.Text) || TextBox_Password.Text.ToLower() == "password")
+                {
+                    MessageBox.Show("Wrong username or password, try again!", "Login - Wrong credentials", MessageBoxButtons.OK);
+                    return;
+                }
+
+                List<Authentificator.User> users = await Authentificator.FetchUsers();
+
+                if (users.Count == 0) throw new Exception("The database is empty");
+
+                foreach (var user in users)
+                {
+                    if (TextBox_Username.Text == user.Username && TextBox_Password.Text == user.Password)
+                    {
+                        Timer_DateTime.Enabled = false;
+                        username = TextBox_Username.Text;
+                        password = TextBox_Password.Text;
+
+                        this.Hide();
+                        new Main_Form().ShowDialog();
+                        this.Close();
+                        return;
+                    }
+                }
+                MessageBox.Show("Wrong username or password, try again!", "Login - Wrong credentials", MessageBoxButtons.OK);
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(exception.Message);
+                Debug.WriteLine($"Something went wrong: {exception.Message}", "Login - Fatal Failure");
+            }
+        }
+
+        private void Button_Exit_Click(object sender, EventArgs e)
+        {
+            Application.Exit();
+        }
+
+        private void Timer_DateTime_Tick(object sender, EventArgs e)
+        {
+            Label_Time.Text = DateTime.Now.ToString("hh:mm:ss tt");
+        }
+
+        private void TextBox_Username_MouseClick(object sender, MouseEventArgs e)
+        {
+            if (TextBox_Username.Text == "Username")
+                TextBox_Username.Text = "";
+        }
+
+        private void TextBox_Password_MouseClick(object sender, MouseEventArgs e)
+        {
+            if (TextBox_Password.Text == "Password")
+                TextBox_Password.Text = "";
         }
 
         private void Panel_Username_MouseLeave(object sender, EventArgs e)

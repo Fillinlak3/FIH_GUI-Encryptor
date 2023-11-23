@@ -1,5 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
+using Windows.Services.Maps;
 
 namespace FIH_GUI_Encryptor
 {
@@ -10,9 +14,93 @@ namespace FIH_GUI_Encryptor
             InitializeComponent();
         }
 
-        private void Button_goRegister_Click(object sender, EventArgs e)
+        private bool IsValidUsername(string username)
         {
-            
+            string pattern = @"^[a-zA-Z0-9](?!.*[._-]{2})[a-zA-Z0-9._-]*[a-zA-Z0-9]$";
+            return Regex.IsMatch(username, pattern);
+        }
+        private bool IsValidPassword(string password)
+        {
+            string pattern = @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$";
+            return Regex.IsMatch(password, pattern);
+        }
+
+        static bool IsValidEmail(string email)
+        {
+            string pattern = @"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$";
+            return Regex.IsMatch(email, pattern);
+        }
+
+        static bool IsValidName(string lastName)
+        {
+            string pattern = @"^[a-zA-Z]+[- ]?[a-zA-Z]+$";
+            return Regex.IsMatch(lastName, pattern);
+        }
+
+        private async void Button_goRegister_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // Username restrictions.
+                if (String.IsNullOrWhiteSpace(TextBox_Username.Text))
+                    throw new Exception("Username cannot be an empty field!");
+                if (TextBox_Username.Text.Contains(' '))
+                    throw new Exception("Username cannot have whitespaces!");
+                if (IsValidUsername(TextBox_Username.Text) == false)
+                    throw new Exception("Username contains unallowed characters. See the help for more information.");
+
+                // Password restrictions.
+                if (String.IsNullOrWhiteSpace(TextBox_Password.Text))
+                    throw new Exception("Password cannot be an empty field!");
+                if (IsValidPassword(TextBox_Password.Text) == false)
+                    throw new Exception("Password must have at least one uppercase letter, one lowercase letter, one digit, one special character, and a minimum length of 8 characters. See the help for more information.");
+
+                // Email restrictions.
+                if (String.IsNullOrWhiteSpace(TextBox_Email.Text))
+                    throw new Exception("Email cannot be an empty field!");
+                if (IsValidEmail(TextBox_Email.Text) == false)
+                    throw new Exception("Email doesn't follow the specific rules. See the help for more information.");
+
+                // First-Name restrictions.
+                if (String.IsNullOrWhiteSpace(TextBox_FirstName.Text))
+                    throw new Exception("First-Name cannot be an empty field!");
+                if (IsValidName(TextBox_FirstName.Text) == false)
+                    throw new Exception("First-Name can have one space or dash and only letters. See the help for more information.");
+
+                // First-Name restrictions.
+                if (String.IsNullOrWhiteSpace(TextBox_LastName.Text))
+                    throw new Exception("Last-Name cannot be an empty field!");
+                if (IsValidName(TextBox_LastName.Text) == false)
+                    throw new Exception("Last-Name can have one space or dash and only letters. See the help for more information.");
+
+                List<Authentificator.User> users = await Authentificator.FetchUsers();
+                // Check if the username is unique.
+                foreach (var user in users)
+                {
+                    if (TextBox_Username.Text == user.Username)
+                        throw new Exception("Username is already registered!");
+                }
+
+                // Everything is fine, register the user.
+                users.Add(new Authentificator.User()
+                {
+                    Index = users[users.Count - 1].Index + 1,
+                    Username = TextBox_Username.Text,
+                    Password = TextBox_Password.Text,
+                    Email = TextBox_Email.Text
+                });
+                await Authentificator.UpdateUsers(users, true);
+                MessageBox.Show("Account successfully registered!", "Register - Successfull");
+
+                this.Hide();
+                new Login().ShowDialog();
+                this.Close();
+                return;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error occured whilst attempting to register: {ex.Message}", "Register - Fatal Failure");
+            }
         }
 
         #region Keep textboxes filled and empty on click
@@ -41,7 +129,7 @@ namespace FIH_GUI_Encryptor
             if (TextBox_Password.Text == "Password")
                 TextBox_Password.Text = "";
         }
-        
+
         private void Panel_FirstName_MouseLeave(object sender, EventArgs e)
         {
             if (String.IsNullOrEmpty(TextBox_FirstName.Text))

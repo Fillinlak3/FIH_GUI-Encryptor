@@ -15,12 +15,12 @@ namespace FIH_GUI_Encryptor
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             #if DEBUG
-            ConsoleLog.consoleHandle = ConsoleLog.GetConsoleWindow();
+            //ConsoleLog.consoleHandle = ConsoleLog.GetConsoleWindow();
             #else
             ConsoleLog.consoleHandle = IntPtr.Zero;
             #endif
             ConsoleLog.WriteLine("FIH_GUI", "<*> Debugging Console Active <*>");
-            Application.Run(new Main_Form());
+            Application.Run(new Login());
         }
     }
 }
