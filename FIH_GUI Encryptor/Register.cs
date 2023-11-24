@@ -99,7 +99,6 @@ namespace FIH_GUI_Encryptor
                 {
                     privatekey = GeneratePrivateKey();
                 } while (users.Any(user => user.PrivateKey == privatekey));
-                Console.Write("Gen key: " + privatekey);
 
                 // Everything is fine, register the user.
                 users.Add(new Authentificator.User()

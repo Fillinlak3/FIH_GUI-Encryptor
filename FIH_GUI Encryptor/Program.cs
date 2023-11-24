@@ -15,7 +15,7 @@ namespace FIH_GUI_Encryptor
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             #if DEBUG
-            //ConsoleLog.consoleHandle = ConsoleLog.GetConsoleWindow();
+            ConsoleLog.consoleHandle = ConsoleLog.GetConsoleWindow();
             #else
             ConsoleLog.consoleHandle = IntPtr.Zero;
             #endif

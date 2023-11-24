@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.Xml;
 using System.Text;
 using System.Windows;
+using System.Windows.Forms;
 using System.Windows.Input;
 
 namespace FIH_GUI_Encryptor
@@ -48,6 +49,23 @@ namespace FIH_GUI_Encryptor
                 }
             }
         }
+        public void DoubleEncrypt(Stream inputStream, Stream outputStream, string privatekey, string publickey)
+        {
+            byte[] encryptedBytes;
+
+            // First encryption with private key.
+            using (MemoryStream tempStream = new MemoryStream())
+            {
+                Encrypt(inputStream, tempStream, privatekey);
+                encryptedBytes = tempStream.ToArray();
+            }
+
+            // Second encryption with public key.
+            using (MemoryStream encryptedStream = new MemoryStream(encryptedBytes))
+            {
+                Encrypt(encryptedStream, outputStream, publickey);
+            }
+        }
 
         public void Decrypt(Stream inputStream, Stream outputStream, string key)
         {
@@ -78,6 +96,30 @@ namespace FIH_GUI_Encryptor
                         outputStream.Write(buffer, 0, bytesRead);
                     }
                 }
+            }
+        }
+        public void DoubleDecrypt(Stream inputStream, Stream outputStream, string publickey, string privatekey)
+        {
+            byte[] decryptedBytes;
+
+            // First decryption with public key.
+            using (MemoryStream tempStream = new MemoryStream())
+            {
+                Decrypt(inputStream, tempStream, publickey);
+                decryptedBytes = tempStream.ToArray();
+            }
+
+            // Second encryption with private key.
+            try
+            {
+                using (MemoryStream decryptedStream = new MemoryStream(decryptedBytes))
+                {
+                    Decrypt(decryptedStream, outputStream, privatekey);
+                }
+            }
+            catch
+            {
+                throw new Exception("This file was encrypted under the authorization of another user. Access is totally confidential and forbidden.");
             }
         }
 

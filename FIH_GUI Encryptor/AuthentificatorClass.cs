@@ -89,11 +89,11 @@ namespace FIH_GUI_Encryptor
                     if (accountToRemove != null)
                     {
                         users.Remove(accountToRemove);
-                        Console.WriteLine($"Account with username {username} removed.");
+                        ConsoleLog.WriteLine("Authentificator-Account-Remove", $"Account with username {username} removed.");
                     }
                     else
                     {
-                        Console.WriteLine($"Account with username {username} not found.");
+                        ConsoleLog.WriteLine("Authentificator-Account-Remove", $"Account with username {username} not found.");
                     }
                     return users;
                 }
@@ -158,7 +158,7 @@ namespace FIH_GUI_Encryptor
                 else
                 {
                     ConsoleLog.WriteLine("Authentificator-Gist-Read", $"Error reading Gist. Status Code: {response.StatusCode}");
-                    Console.WriteLine("Authentificator-Gist-Read", $"More information: {await response.Content.ReadAsStringAsync()}");
+                    ConsoleLog.WriteLine("Authentificator-Gist-Read", $"More information: {await response.Content.ReadAsStringAsync()}");
                     throw new HttpRequestException($"Error reading the database. Status Code: {response.StatusCode}");
                 }
             }
@@ -189,7 +189,7 @@ namespace FIH_GUI_Encryptor
                 else
                 {
                     ConsoleLog.WriteLine("Authentificator-Gist-GetContent", $"Error fetching Gist details. Status Code: {response.StatusCode}");
-                    Console.WriteLine("Authentificator-Gist-GetContent", $"More information: {await response.Content.ReadAsStringAsync()}");
+                    ConsoleLog.WriteLine("Authentificator-Gist-GetContent", $"More information: {await response.Content.ReadAsStringAsync()}");
                     throw new HttpRequestException($"Error fetching database details. Status Code: {response.StatusCode}");
                 }
             }
