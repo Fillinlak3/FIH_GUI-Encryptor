@@ -26,6 +26,7 @@ namespace FIH_GUI_Encryptor
             public string Username { get; set; }
             public string Password { get; set; }
             public string Email { get; set; }
+            public string PrivateKey { get; set; }
 
             public class Account
             {
@@ -37,23 +38,25 @@ namespace FIH_GUI_Encryptor
                         // Transform the accounts to the desired structure
                         var transformedAccounts = users.Select(user => new Dictionary<string, object>
                         {
-                            { user.Index.ToString(), new { user.Username, user.Password, user.Email } }
+                            { user.Index.ToString(), new { user.Username, user.Password, user.Email, user.PrivateKey } }
                         });
 
                         // Serialize the transformed accounts to JSON
                         json = JsonSerializer.Serialize(transformedAccounts, new JsonSerializerOptions { WriteIndented = true });
 
-                        Console.WriteLine($"Succesfully converted to json");
+                        ConsoleLog.WriteLine("Authentificator-Account-Save", "Succesfully converted to JSON.");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error converting accounts to JSON: {ex.Message}");
+                        ConsoleLog.WriteLine("Authentificator-Account-Save", $"Error converting accounts to JSON: {ex.Message}");
                     }
                     return json;
                 }
 
                 static public List<User> Get(string json)
                 {
+                    if (string.IsNullOrWhiteSpace(json)) return new List<User>();
+
                     // Deserialize the JSON into a list of dictionaries
                     var array = JsonSerializer.Deserialize<List<Dictionary<string, Dictionary<string, string>>>>(json);
 
@@ -70,7 +73,8 @@ namespace FIH_GUI_Encryptor
                                 Index = index,
                                 Username = accountDetails["Username"],
                                 Password = accountDetails["Password"],
-                                Email = accountDetails["Email"]
+                                Email = accountDetails["Email"],
+                                PrivateKey = accountDetails["PrivateKey"]
                             };
                         });
                     }).ToList();
@@ -99,11 +103,13 @@ namespace FIH_GUI_Encryptor
             {
                 public static string Username { get; set; }
                 public static string Password { get; set; }
+                public static string PrivateKey { get; set; }
 
                 static Current()
                 {
                     Username = string.Empty;
                     Password = string.Empty;
+                    PrivateKey = string.Empty;
                 }
             }
 
@@ -242,7 +248,7 @@ namespace FIH_GUI_Encryptor
         public static async Task<List<User>> FetchUsers()
         {
             string raw_data = await Gist.Read();
-            return User.Account.Get(raw_data) ?? new List<User>();
+            return User.Account.Get(raw_data);
         }
         
         public static async Task UpdateUsers(List<User> users, bool overwrite = false)

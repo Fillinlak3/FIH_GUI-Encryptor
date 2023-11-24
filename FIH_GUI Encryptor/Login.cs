@@ -91,8 +91,9 @@ namespace FIH_GUI_Encryptor
                     if (TextBox_Username.Text == user.Username && TextBox_Password.Text == user.Password)
                     {
                         Timer_DateTime.Enabled = false;
-                        Authentificator.User.Current.Username = TextBox_Username.Text;
-                        Authentificator.User.Current.Password = TextBox_Password.Text;
+                        Authentificator.User.Current.Username = user.Username;
+                        Authentificator.User.Current.Password = user.Password;
+                        Authentificator.User.Current.PrivateKey = user.PrivateKey;
 
                         this.Hide();
                         new Main_Form().ShowDialog();

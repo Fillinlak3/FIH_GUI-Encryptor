@@ -37,6 +37,21 @@ namespace FIH_GUI_Encryptor
             return Regex.IsMatch(lastName, pattern);
         }
 
+        public static string GeneratePrivateKey()
+        {
+            short length = 32;
+            const string availablecharacters = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890~!@#$%^*()-_=[]{}|;:,./?";
+            Random rand = new Random();
+
+            string privatekey = new string(availablecharacters
+            .OrderBy(c => rand.Next(0, availablecharacters.Length - 1))
+            .Distinct()
+            .Take(length)
+            .ToArray());
+
+            return privatekey;
+        }
+
         private async void Button_goRegister_Click(object sender, EventArgs e)
         {
             try
@@ -78,13 +93,22 @@ namespace FIH_GUI_Encryptor
                 if(users.Any(user => user.Username == TextBox_Username.Text))
                     throw new Exception("Username is already registered!");
 
+                // Generate an unique private key that is different for each user.
+                string privatekey = string.Empty;
+                do
+                {
+                    privatekey = GeneratePrivateKey();
+                } while (users.Any(user => user.PrivateKey == privatekey));
+                Console.Write("Gen key: " + privatekey);
+
                 // Everything is fine, register the user.
                 users.Add(new Authentificator.User()
                 {
-                    Index = users[users.Count - 1].Index + 1,
+                    Index = users.Count > 0 ? users[users.Count - 1].Index + 1 : 1,
                     Username = TextBox_Username.Text,
                     Password = TextBox_Password.Text,
-                    Email = TextBox_Email.Text
+                    Email = TextBox_Email.Text,
+                    PrivateKey = privatekey
                 });
                 await Authentificator.UpdateUsers(users, true);
                 MessageBox.Show("Account successfully registered!", "Register - Successfull");
