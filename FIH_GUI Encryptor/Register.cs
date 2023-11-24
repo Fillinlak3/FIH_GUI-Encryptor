@@ -14,24 +14,24 @@ namespace FIH_GUI_Encryptor
             InitializeComponent();
         }
 
-        private bool IsValidUsername(string username)
+        public static bool IsValidUsername(string username)
         {
             string pattern = @"^[a-zA-Z0-9](?!.*[._-]{2})[a-zA-Z0-9._-]*[a-zA-Z0-9]$";
             return Regex.IsMatch(username, pattern);
         }
-        private bool IsValidPassword(string password)
+        public static bool IsValidPassword(string password)
         {
             string pattern = @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$";
             return Regex.IsMatch(password, pattern);
         }
 
-        static bool IsValidEmail(string email)
+        private static bool IsValidEmail(string email)
         {
             string pattern = @"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$";
             return Regex.IsMatch(email, pattern);
         }
 
-        static bool IsValidName(string lastName)
+        private static bool IsValidName(string lastName)
         {
             string pattern = @"^[a-zA-Z]+[- ]?[a-zA-Z]+$";
             return Regex.IsMatch(lastName, pattern);
@@ -75,11 +75,8 @@ namespace FIH_GUI_Encryptor
 
                 List<Authentificator.User> users = await Authentificator.FetchUsers();
                 // Check if the username is unique.
-                foreach (var user in users)
-                {
-                    if (TextBox_Username.Text == user.Username)
-                        throw new Exception("Username is already registered!");
-                }
+                if(users.Any(user => user.Username == TextBox_Username.Text))
+                    throw new Exception("Username is already registered!");
 
                 // Everything is fine, register the user.
                 users.Add(new Authentificator.User()

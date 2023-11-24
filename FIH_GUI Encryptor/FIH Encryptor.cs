@@ -3,6 +3,7 @@ using System.IO;
 using System.Text;
 using System.Windows.Forms;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace FIH_GUI_Encryptor
 {
@@ -25,9 +26,8 @@ namespace FIH_GUI_Encryptor
         private void Main_Form_Load(object sender, EventArgs e)
         {
             Setup();
-            Label_Username.Text = Login.username;
+            Label_Username.Text = Authentificator.User.Current.Username;
             Label_GreetinsUser.Text = "Welcome back,\n " + Label_Username.Text;
-            UserSettings_Default();
             Pick_Quote();
             Panel_Greetings.Visible = true;
         }
@@ -110,6 +110,8 @@ namespace FIH_GUI_Encryptor
         {
             Setup();
             Pick_Quote();
+            Label_Username.Text = Authentificator.User.Current.Username;
+            Label_GreetinsUser.Text = "Welcome back,\n " + Label_Username.Text;
             Panel_Greetings.Visible = true;
         }
         private void Button_Encrypt_MouseClick(object sender, MouseEventArgs e)
@@ -506,56 +508,83 @@ namespace FIH_GUI_Encryptor
         }
         private void UserSettings_Default()
         {
-            TextBox_OldUsername.Text = Login.username;
+            TextBox_OldUsername.Text = Authentificator.User.Current.Username;
             TextBox_NewUsername.Text = "Username";
             TextBox_OldPassword.Text = "Password";
             TextBox_NewPassword.Text = "Password";
             CheckBox_Password.CheckState = CheckBox_Username.CheckState = CheckState.Unchecked;
         }
-        private void Button_UpdateSettings_Click(object sender, EventArgs e)
+        private async void Button_UpdateSettings_Click(object sender, EventArgs e)
         {
             try
             {
-                if (CheckBox_Username.CheckState == CheckState.Unchecked &&
-                CheckBox_Password.CheckState == CheckState.Unchecked)
-                    throw new Exception("No changes were made.");
-
                 if (CheckBox_Username.CheckState == CheckState.Checked)
                 {
-                    if (TextBox_OldUsername.Text != Login.username ||
-                        TextBox_NewUsername.Text == Login.username ||
-                        TextBox_NewUsername.Text == "Username" ||
-                        String.IsNullOrEmpty(TextBox_NewUsername.Text))
-                        throw new Exception("Invalid username.");
+                    // De implementat blacklist pentru username-uri precum Admin administrator root username etc
+                    string[] blacklisted_usernames = new string[] { 
+                        "username", "admin", "administrator", "root", "sysadmin", "superuser", "master", "localhost", "test"
+                    };
+
+                    // Username restrictions.
+                    if (TextBox_OldUsername.Text != Authentificator.User.Current.Username)
+                        throw new Exception("Old username is not correct to validate your confirmation.");
+                    if (TextBox_NewUsername.Text == TextBox_OldUsername.Text)
+                        throw new Exception("Cannot use the current username for a new one.");
+                    if (blacklisted_usernames.Contains(TextBox_NewUsername.Text))
+                        throw new Exception("Cannot use this type of username");
+                    if (String.IsNullOrWhiteSpace(TextBox_NewUsername.Text))
+                        throw new Exception("Username cannot be an empty field!");
+                    if (TextBox_NewUsername.Text.Contains(' '))
+                        throw new Exception("Username cannot have whitespaces!");
+                    if (Register.IsValidUsername(TextBox_NewUsername.Text) == false)
+                        throw new Exception("Username contains unallowed characters. See the help for more information.");
+
+                    List<Authentificator.User> users = await Authentificator.FetchUsers();
+
+                    // Check if the user is unique.
+                    if (users.Any(user => user.Username == TextBox_NewUsername.Text))
+                        throw new Exception("Username already exists!");
 
                     // Good username ~ change
 
-                    // Implement username change in accounts local DB.
+                    // Implement username change in accounts DB.
+                    users.FirstOrDefault(user => user.Username == TextBox_OldUsername.Text).Username = TextBox_NewUsername.Text;
+                    await Authentificator.UpdateUsers(users, true);
 
-                    Login.username = TextBox_NewUsername.Text;
-                    Label_Username.Text = Login.username;
-                    Label_GreetinsUser.Text = "Welcome back,\n " + Label_Username.Text;
+                    Authentificator.User.Current.Username = TextBox_NewUsername.Text;
                     MessageBox.Show("Succesfully updated username.");
+                    PictureBox_Logo_Click(sender, e);
                 }
-                if (CheckBox_Password.CheckState == CheckState.Checked)
+                else if (CheckBox_Password.CheckState == CheckState.Checked)
                 {
-                    if (TextBox_OldPassword.Text != Login.password ||
-                        TextBox_NewPassword.Text == Login.password ||
-                        TextBox_NewPassword.Text == "Password" ||
-                        String.IsNullOrEmpty(TextBox_NewPassword.Text))
-                        throw new Exception("Invalid password.");
+                    // Password restrictions.
+                    if (TextBox_OldPassword.Text != Authentificator.User.Current.Password)
+                        throw new Exception("Old password doesn't match for your confirmation.");
+                    if (TextBox_NewPassword.Text == TextBox_OldUsername.Text)
+                        throw new Exception("Cannot use the current password for a new one.");
+                    if (String.IsNullOrWhiteSpace(TextBox_NewPassword.Text))
+                        throw new Exception("Password cannot be an empty field!");
+                    if (Register.IsValidPassword(TextBox_NewPassword.Text) == false)
+                        throw new Exception("Password must have at least one uppercase letter, one lowercase letter, one digit, one special character, and a minimum length of 8 characters. See the help for more information.");
 
                     // Good password ~ change
 
                     // Implement password change in accounts local DB.
 
+                    List<Authentificator.User> users = await Authentificator.FetchUsers();
+                    users.FirstOrDefault(user => user.Username == Authentificator.User.Current.Username).Password = TextBox_NewPassword.Text;
+                    await Authentificator.UpdateUsers(users, true);
+
+                    Authentificator.User.Current.Password = TextBox_NewPassword.Text;
                     MessageBox.Show("Succesfully updated password.");
+                    PictureBox_Logo_Click(sender, e);
                 }
+                else throw new Exception("No changes were made.");
             }
             catch (Exception exception)
             {
                 UserSettings_Default();
-                MessageBox.Show(exception.Message);
+                MessageBox.Show($"Something went wrong: {exception.Message}. Try again.", "FIH GUI - Account settings");
             }
         }
         #endregion

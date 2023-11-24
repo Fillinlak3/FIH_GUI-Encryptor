@@ -95,6 +95,18 @@ namespace FIH_GUI_Encryptor
                 }
             }
 
+            public class Current
+            {
+                public static string Username { get; set; }
+                public static string Password { get; set; }
+
+                static Current()
+                {
+                    Username = string.Empty;
+                    Password = string.Empty;
+                }
+            }
+
             public User()
             {
                 Index = -1;

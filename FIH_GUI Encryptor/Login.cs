@@ -9,9 +9,6 @@ namespace FIH_GUI_Encryptor
     {
         private readonly string Program_Version = "1.0";
 
-        public static string username = "";
-        public static string password = "";
-
         public Login()
         {
             InitializeComponent();
@@ -94,8 +91,8 @@ namespace FIH_GUI_Encryptor
                     if (TextBox_Username.Text == user.Username && TextBox_Password.Text == user.Password)
                     {
                         Timer_DateTime.Enabled = false;
-                        username = TextBox_Username.Text;
-                        password = TextBox_Password.Text;
+                        Authentificator.User.Current.Username = TextBox_Username.Text;
+                        Authentificator.User.Current.Password = TextBox_Password.Text;
 
                         this.Hide();
                         new Main_Form().ShowDialog();
