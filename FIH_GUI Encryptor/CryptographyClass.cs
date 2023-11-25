@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Security.Cryptography.Xml;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
@@ -18,7 +19,7 @@ namespace FIH_GUI_Encryptor
         private const string _Encryption_IV = "n0&y)$MGjBt24?L8";
 
         // AES-256 bit Encryption
-        public void Encrypt(Stream inputStream, Stream outputStream, string key)
+        public async Task Encrypt(Stream inputStream, Stream outputStream, string key)
         {
             using (Aes aes = Aes.Create())
             {
@@ -44,30 +45,41 @@ namespace FIH_GUI_Encryptor
                 {
                     while ((bytesRead = inputStream.Read(buffer, 0, buffer.Length)) > 0)
                     {
-                        cryptoStream.Write(buffer, 0, bytesRead);
+                        await cryptoStream.WriteAsync(buffer, 0, bytesRead);
                     }
                 }
+                keyBytes = null;
+                keyArray = null;
+                buffer = null;
             }
         }
-        public void DoubleEncrypt(Stream inputStream, Stream outputStream, string privatekey, string publickey)
+        public async Task DoubleEncrypt(Stream inputStream, Stream outputStream, string privatekey, string publickey, int bufferSize = 81920)
         {
-            byte[] encryptedBytes;
+            // Create a temporary file for the first encryption
+            string tempFile = Path.GetTempFileName();
 
-            // First encryption with private key.
-            using (MemoryStream tempStream = new MemoryStream())
+            try
             {
-                Encrypt(inputStream, tempStream, privatekey);
-                encryptedBytes = tempStream.ToArray();
+                // First encryption with private key.
+                using (FileStream tempStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan))
+                {
+                    await Encrypt(inputStream, tempStream, privatekey);
+                }
+
+                // Second encryption with public key.
+                using (FileStream tempStream = new FileStream(tempFile, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan))
+                {
+                    await Encrypt(tempStream, outputStream, publickey);
+                }
             }
-
-            // Second encryption with public key.
-            using (MemoryStream encryptedStream = new MemoryStream(encryptedBytes))
+            finally
             {
-                Encrypt(encryptedStream, outputStream, publickey);
+                // Delete the temporary file
+                File.Delete(tempFile);
             }
         }
 
-        public void Decrypt(Stream inputStream, Stream outputStream, string key)
+        public async Task Decrypt(Stream inputStream, Stream outputStream, string key)
         {
             using (Aes aes = Aes.Create())
             {
@@ -93,33 +105,45 @@ namespace FIH_GUI_Encryptor
                 {
                     while ((bytesRead = cryptoStream.Read(buffer, 0, buffer.Length)) > 0)
                     {
-                        outputStream.Write(buffer, 0, bytesRead);
+                        await outputStream.WriteAsync(buffer, 0, bytesRead);
+                    }
+                }
+                keyBytes = null;
+                keyArray = null;
+                iv = null;
+                buffer = null;
+            }
+        }
+        public async Task DoubleDecrypt(Stream inputStream, Stream outputStream, string privatekey, string publickey, int bufferSize = 81920)
+        {
+            // Create a temporary file for the first encryption
+            string tempFile = Path.GetTempFileName();
+
+            try
+            {
+                // First encryption with private key.
+                using (FileStream tempStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan))
+                {
+                    await Decrypt(inputStream, tempStream, publickey);
+                }
+
+                // Second encryption with public key.
+                using (FileStream tempStream = new FileStream(tempFile, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan))
+                {
+                    try
+                    {
+                        await Decrypt(tempStream, outputStream, privatekey);
+                    }
+                    catch
+                    {
+                        throw new Exception("This file was encrypted under the authorization of another user. Access is totally confidential and forbidden.");
                     }
                 }
             }
-        }
-        public void DoubleDecrypt(Stream inputStream, Stream outputStream, string publickey, string privatekey)
-        {
-            byte[] decryptedBytes;
-
-            // First decryption with public key.
-            using (MemoryStream tempStream = new MemoryStream())
+            finally
             {
-                Decrypt(inputStream, tempStream, publickey);
-                decryptedBytes = tempStream.ToArray();
-            }
-
-            // Second encryption with private key.
-            try
-            {
-                using (MemoryStream decryptedStream = new MemoryStream(decryptedBytes))
-                {
-                    Decrypt(decryptedStream, outputStream, privatekey);
-                }
-            }
-            catch
-            {
-                throw new Exception("This file was encrypted under the authorization of another user. Access is totally confidential and forbidden.");
+                // Delete the temporary file
+                File.Delete(tempFile);
             }
         }
 

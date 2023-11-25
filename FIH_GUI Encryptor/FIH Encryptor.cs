@@ -4,6 +4,8 @@ using System.Text;
 using System.Windows.Forms;
 using System.Collections.Generic;
 using System.Linq;
+using System.Diagnostics;
+using Windows.UI.StartScreen;
 
 namespace FIH_GUI_Encryptor
 {
@@ -226,6 +228,54 @@ namespace FIH_GUI_Encryptor
 
         #region Encrypt & Decrypt Files
         // ======================== Encrypt & Decrypt Files ==============================
+        // Copy larger files
+        private void CopyFile(string sourceFilePath, string destinationFilePath, bool overwrite = false, int bufferSize = 81920)
+        {
+            if (!overwrite && File.Exists(destinationFilePath))
+            {
+                throw new IOException("Destination file already exists, and overwrite is set to false.");
+            }
+
+            using (FileStream sourceStream = new FileStream(sourceFilePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan))
+            using (FileStream destinationStream = new FileStream(destinationFilePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan))
+            {
+                byte[] buffer = new byte[bufferSize];
+                int bytesRead;
+
+                while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    destinationStream.Write(buffer, 0, bytesRead);
+                }
+
+                buffer = null;
+            }
+        }
+        // Buffer size calculator dynamically based on file size
+        private int CalculateBufferSize(long fileSize)
+        {
+            const int tiny = 16384; // 16 KB
+            const int small = 1 * 1024 * 1024; // 1 MB
+            const int medium = 128 * 1024 * 1024; // 128 MB
+            const int huge = (Int32.MaxValue - 1) / 2; // 2 GB
+
+            if (fileSize <= tiny)
+            {
+                return tiny;
+            }
+            else if (fileSize <= small)
+            {
+                return small;
+            }
+            else if (fileSize <= medium)
+            {
+                return medium;
+            }
+            else
+            {
+                return huge;
+            }
+        }
+
         // Encryptor
         private void Panel_Encrypt_Files_VisibleChanged(object sender, EventArgs e)
         {
@@ -262,12 +312,16 @@ namespace FIH_GUI_Encryptor
             if (file_names.Count == 0)
                 Encrypted_Files_Selected.Text = "No files chosen..";
         }
-        private void Button_Encrypt_EncryptFiles_Click(object sender, EventArgs e)
+        private async void Button_Encrypt_EncryptFiles_Click(object sender, EventArgs e)
         {
             if (file_names.Count != 0)
             {
                 List<String> brokenFiles = new List<String>();
                 FillInHack fih = new FillInHack();
+                string backupFile;
+                string encryptedFile;
+                string resultFile;
+                int bufferSize;
                 Generated_Key = fih.Generate_Key();
 
                 if (Generated_Key.Length != 32 || Authentificator.User.Current.PrivateKey.Length != 32)
@@ -283,28 +337,30 @@ namespace FIH_GUI_Encryptor
                 ConsoleLog.WriteLine();
                 foreach (string file in file_names)
                 {
-                    string backupFile = string.Empty;
-                    string encryptedFile = string.Empty;
-                    string resultFile = string.Empty;
+                    backupFile = string.Empty;
+                    encryptedFile = string.Empty;
+                    resultFile = string.Empty;
+                    bufferSize = CalculateBufferSize(new FileInfo(file).Length);
                     try
                     {
                         // File.ReadAllBytes(file).Length can't read more than 2GB... This is where I lost 8 hrs bc of this mistake.
                         if (new FileInfo(file).Length == 0) throw new ArgumentException("Cannot encrypt an empty file. Operation aborted.");
                         // Backup the file first to prevent data loss.
                         backupFile = Path.GetTempFileName();
+                        CopyFile(file, backupFile, true);
                         ConsoleLog.RewriteOnLine(-2 - brokenFiles.Count, "Encryption", $"Backup file created: {backupFile}");
-                        File.Copy(file, backupFile, true);
                         // Create new file names.
                         encryptedFile = file.Substring(0, file.LastIndexOf(".") + 1) + "encrypted";
                         resultFile = file + ".gxPfZY2TX";
                         // Encrypt block by block and write file.
-                        using (FileStream inputFileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan))
-                        using (FileStream encryptedFileStream = new FileStream(encryptedFile, FileMode.Create, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan))
+                        using (FileStream inputFileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan))
+                        using (FileStream encryptedFileStream = new FileStream(encryptedFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan))
                         {
                             // Write "FillInHack!" string during encryption
                             byte[] hackBytes = Encoding.UTF8.GetBytes("FillInHack!");
                             encryptedFileStream.Write(hackBytes, 0, hackBytes.Length);
-                            fih.DoubleEncrypt(inputFileStream, encryptedFileStream, Authentificator.User.Current.PrivateKey, Generated_Key);
+                            await fih.DoubleEncrypt(inputFileStream, encryptedFileStream, Authentificator.User.Current.PrivateKey, Generated_Key);
+                            hackBytes = null;
                         }
                         // Move from file.encrypted to original file name.
                         File.Delete(file);
@@ -316,9 +372,9 @@ namespace FIH_GUI_Encryptor
                         MessageBox.Show(ex.Message, "FIH Encryptor - Fatal error");
                         brokenFiles.Add(file);
                         // Check if backup file exists and recoverable, then restore.
-                        if (File.Exists(backupFile) && File.ReadAllBytes(backupFile).Length > 0)
+                        if (File.Exists(backupFile) && new FileInfo(file).Length > 0)
                         {
-                            File.Copy(backupFile, file, true);
+                            CopyFile(backupFile, file, true);
                             ConsoleLog.WriteLine("Encryption", $"File ({file.Substring(file.LastIndexOf('\\') + 1)}) backup restored, temporary and modified files erased.");
                         }
                         // Delete the result file ONLY when an error is thrown. Otherwise the file is correctly encrypted.
@@ -332,9 +388,10 @@ namespace FIH_GUI_Encryptor
                     }
                 }
                 if (brokenFiles.Count == file_names.Count)
-                { MessageBox.Show("Couldn't encrypt any file!\nOperation aborted."); return; }
+                { MessageBox.Show("Couldn't encrypt any file!\nOperation aborted."); brokenFiles = null; fih = null; return; }
 
                 MessageBox.Show($"Successfully encrypted {file_names.Count - brokenFiles.Count}/{file_names.Count} files!\nKey is copied in your clipboard.");
+                brokenFiles = null; fih = null;
                 Clipboard.SetText(Generated_Key);
                 Generated_Key = "";
             }
@@ -372,11 +429,16 @@ namespace FIH_GUI_Encryptor
             if (file_names.Count == 0)
                 Encrypted_Files_Selected.Text = "No files chosen..";
         }
-        private void Button_Decrypt_DecryptFiles_Click(object sender, EventArgs e)
+        private async void Button_Decrypt_DecryptFiles_Click(object sender, EventArgs e)
         {
             if (file_names.Count != 0)
             {
                 List<String> brokenFiles = new List<String>();
+                FillInHack fih = new FillInHack();
+                string backupFile;
+                string decryptedFile;
+                string resultFile;
+                int bufferSize;
                 Generated_Key = Microsoft.VisualBasic.Interaction.InputBox("Enter the secret key", "FIH Encryptor", "", -1, -1);
                 if (Generated_Key.Length != 32)
                 {
@@ -397,23 +459,23 @@ namespace FIH_GUI_Encryptor
                 ConsoleLog.WriteLine();
                 foreach (string file in file_names)
                 {
-                    string backupFile = string.Empty;
-                    string decryptedFile = string.Empty;
-                    string resultFile = string.Empty;
+                    backupFile = string.Empty;
+                    decryptedFile = string.Empty;
+                    resultFile = string.Empty;
+                    bufferSize = CalculateBufferSize(new FileInfo(file).Length);
                     try
                     {
                         if (new FileInfo(file).Length == 0) throw new ArgumentException("Cannot decrypt an empty file. Operation aborted.");
-                        FillInHack fih = new FillInHack();
                         // Backup the file first to prevent data loss.
                         backupFile = Path.GetTempFileName();
+                        CopyFile(file, backupFile, true);
                         ConsoleLog.RewriteOnLine(-2 - brokenFiles.Count, "Decryption", $"Backup file created: {backupFile}");
-                        File.Copy(file, backupFile, true);
                         // Create new file names.
                         decryptedFile = file.Substring(0, file.LastIndexOf(".") + 1) + "encrypted";
                         resultFile = file.Substring(0, file.LastIndexOf("."));
                         // Decrypt block by block and write file.
-                        using (FileStream encryptedFileStream = new FileStream(file, FileMode.Open, FileAccess.Read))
-                        using (FileStream decryptedFileStream = new FileStream(decryptedFile, FileMode.Create, FileAccess.Write))
+                        using (FileStream encryptedFileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan))
+                        using (FileStream decryptedFileStream = new FileStream(decryptedFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan))
                         {
                             // Read and verify "FillInHack!" string during decryption
                             byte[] hackBytes = new byte[11];
@@ -421,7 +483,7 @@ namespace FIH_GUI_Encryptor
                             string hackString = Encoding.UTF8.GetString(hackBytes);
                             if (hackString != "FillInHack!") throw new ArgumentException("File content was altered and it is no longer recoverable.");
 
-                            fih.DoubleDecrypt(encryptedFileStream, decryptedFileStream, Generated_Key, Authentificator.User.Current.PrivateKey);
+                            await fih.DoubleDecrypt(encryptedFileStream, decryptedFileStream, Authentificator.User.Current.PrivateKey, Generated_Key);
                         }
                         // Move from file.encrypted to original file name.
                         File.Delete(file);
@@ -433,9 +495,9 @@ namespace FIH_GUI_Encryptor
                         MessageBox.Show(ex.Message, "FIH Encryptor - Fatal error");
                         brokenFiles.Add(file);
                         // Check if backup file exists and recoverable, then restore.
-                        if (File.Exists(backupFile) && File.ReadAllBytes(backupFile).Length > 0)
+                        if (File.Exists(backupFile) && new FileInfo(file).Length > 0)
                         {
-                            File.Copy(backupFile, file, true);
+                            CopyFile(backupFile, file, true);
                             ConsoleLog.WriteLine("Decryption", $"File ({file.Substring(file.LastIndexOf('\\') + 1)}) backup restored, temporary and modified files erased.");
                         }
                         // Delete the result file ONLY when an error is thrown. Otherwise the file is correctly encrypted.
@@ -449,9 +511,11 @@ namespace FIH_GUI_Encryptor
                     }
                 }
                 if (brokenFiles.Count == file_names.Count)
-                { MessageBox.Show("Couldn't decrypt any file!\nOperation aborted."); return; }
+                { MessageBox.Show("Couldn't decrypt any file!\nOperation aborted."); brokenFiles = null; fih = null; return; }
 
                 MessageBox.Show($"Successfully decrypted {file_names.Count - brokenFiles.Count}/{file_names.Count} files! {(brokenFiles.Count > 0 ? "Undecrypted files remain untouched.":"")}");
+                brokenFiles = null;
+                fih = null;
                 Generated_Key = "";
             }
             else MessageBox.Show("No Files selected..");
