@@ -51,19 +51,27 @@ namespace FIH_GUI_Encryptor
         }
         public void DoubleEncrypt(Stream inputStream, Stream outputStream, string privatekey, string publickey)
         {
-            byte[] encryptedBytes;
+            // Create a temporary file for the first encryption
+            string tempFile = Path.GetTempFileName();
 
-            // First encryption with private key.
-            using (MemoryStream tempStream = new MemoryStream())
+            try
             {
-                Encrypt(inputStream, tempStream, privatekey);
-                encryptedBytes = tempStream.ToArray();
+                // First encryption with private key.
+                using (FileStream tempStream = new FileStream(tempFile, FileMode.Create, FileAccess.ReadWrite))
+                {
+                    Encrypt(inputStream, tempStream, privatekey);
+                }
+
+                // Second encryption with public key.
+                using (FileStream tempStream = new FileStream(tempFile, FileMode.Open, FileAccess.Read))
+                {
+                    Encrypt(tempStream, outputStream, publickey);
+                }
             }
-
-            // Second encryption with public key.
-            using (MemoryStream encryptedStream = new MemoryStream(encryptedBytes))
+            finally
             {
-                Encrypt(encryptedStream, outputStream, publickey);
+                // Delete the temporary file
+                File.Delete(tempFile);
             }
         }
 

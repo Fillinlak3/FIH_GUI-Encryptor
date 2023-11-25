@@ -288,7 +288,8 @@ namespace FIH_GUI_Encryptor
                     string resultFile = string.Empty;
                     try
                     {
-                        if (File.ReadAllBytes(file).Length == 0) throw new ArgumentException("Cannot encrypt an empty file. Operation aborted.");
+                        // File.ReadAllBytes(file).Length can't read more than 2GB... This is where I lost 8 hrs bc of this mistake.
+                        if (new FileInfo(file).Length == 0) throw new ArgumentException("Cannot encrypt an empty file. Operation aborted.");
                         // Backup the file first to prevent data loss.
                         backupFile = Path.GetTempFileName();
                         ConsoleLog.RewriteOnLine(-2 - brokenFiles.Count, "Encryption", $"Backup file created: {backupFile}");
@@ -297,9 +298,8 @@ namespace FIH_GUI_Encryptor
                         encryptedFile = file.Substring(0, file.LastIndexOf(".") + 1) + "encrypted";
                         resultFile = file + ".gxPfZY2TX";
                         // Encrypt block by block and write file.
-                        // Reading files this way work only for less than 2GB of file size.
-                        using (FileStream inputFileStream = new FileStream(file, FileMode.Open, FileAccess.Read))
-                        using (FileStream encryptedFileStream = new FileStream(encryptedFile, FileMode.Create, FileAccess.Write))
+                        using (FileStream inputFileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan))
+                        using (FileStream encryptedFileStream = new FileStream(encryptedFile, FileMode.Create, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan))
                         {
                             // Write "FillInHack!" string during encryption
                             byte[] hackBytes = Encoding.UTF8.GetBytes("FillInHack!");
@@ -402,7 +402,7 @@ namespace FIH_GUI_Encryptor
                     string resultFile = string.Empty;
                     try
                     {
-                        if (File.ReadAllBytes(file).Length == 0) throw new ArgumentException("Cannot decrypt an empty file. Operation aborted.");
+                        if (new FileInfo(file).Length == 0) throw new ArgumentException("Cannot decrypt an empty file. Operation aborted.");
                         FillInHack fih = new FillInHack();
                         // Backup the file first to prevent data loss.
                         backupFile = Path.GetTempFileName();
@@ -411,6 +411,7 @@ namespace FIH_GUI_Encryptor
                         // Create new file names.
                         decryptedFile = file.Substring(0, file.LastIndexOf(".") + 1) + "encrypted";
                         resultFile = file.Substring(0, file.LastIndexOf("."));
+                        // Decrypt block by block and write file.
                         using (FileStream encryptedFileStream = new FileStream(file, FileMode.Open, FileAccess.Read))
                         using (FileStream decryptedFileStream = new FileStream(decryptedFile, FileMode.Create, FileAccess.Write))
                         {
