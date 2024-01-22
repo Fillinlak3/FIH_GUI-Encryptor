@@ -19,7 +19,7 @@ namespace FIH_GUI_Encryptor
         private const string _Encryption_IV = "n0&y)$MGjBt24?L8";
 
         // AES-256 bit Encryption
-        public async Task Encrypt(Stream inputStream, Stream outputStream, string key)
+        public async Task Encrypt(Stream inputStream, Stream outputStream, string key, IProgress<int> progress)
         {
             using (Aes aes = Aes.Create())
             {
@@ -40,12 +40,21 @@ namespace FIH_GUI_Encryptor
                 // Process the file in chunks
                 byte[] buffer = new byte[4096];
                 int bytesRead;
+                long totalBytesRead = 0;
                 using (var encryptor = aes.CreateEncryptor(aes.Key, aes.IV))
                 using (var cryptoStream = new CryptoStream(outputStream, encryptor, CryptoStreamMode.Write))
                 {
                     while ((bytesRead = inputStream.Read(buffer, 0, buffer.Length)) > 0)
                     {
                         await cryptoStream.WriteAsync(buffer, 0, bytesRead);
+
+                        totalBytesRead += bytesRead;
+                        // Report progress
+                        if (progress != null)
+                        {
+                            int percentage = (int)((totalBytesRead * 100) / inputStream.Length / 2);
+                            progress.Report(percentage);
+                        }
                     }
                 }
                 keyBytes = null;
@@ -57,19 +66,26 @@ namespace FIH_GUI_Encryptor
         {
             // Create a temporary file for the first encryption
             string tempFile = Path.GetTempFileName();
+            int percentageFirst = 0;
+            IProgress<int> progress = new Progress<int>(percentage =>
+            {
+                // Update your progress bar with the 'percentage' value
+                Main_Form.EncryptionProgress.Value = percentageFirst + percentage;
+            });
 
             try
             {
                 // First encryption with private key.
                 using (FileStream tempStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan))
                 {
-                    await Encrypt(inputStream, tempStream, privatekey);
+                    await Encrypt(inputStream, tempStream, privatekey, progress);
+                    percentageFirst = Main_Form.DecryptionProgress.Value;
                 }
 
                 // Second encryption with public key.
                 using (FileStream tempStream = new FileStream(tempFile, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan))
                 {
-                    await Encrypt(tempStream, outputStream, publickey);
+                    await Encrypt(tempStream, outputStream, publickey, progress);
                 }
             }
             finally
@@ -79,7 +95,7 @@ namespace FIH_GUI_Encryptor
             }
         }
 
-        public async Task Decrypt(Stream inputStream, Stream outputStream, string key)
+        public async Task Decrypt(Stream inputStream, Stream outputStream, string key, IProgress<int> progress)
         {
             using (Aes aes = Aes.Create())
             {
@@ -100,12 +116,21 @@ namespace FIH_GUI_Encryptor
                 // Process the file in chunks
                 byte[] buffer = new byte[4096];
                 int bytesRead;
+                long totalBytesRead = 0;
                 using (var decryptor = aes.CreateDecryptor(aes.Key, aes.IV))
                 using (var cryptoStream = new CryptoStream(inputStream, decryptor, CryptoStreamMode.Read))
                 {
                     while ((bytesRead = cryptoStream.Read(buffer, 0, buffer.Length)) > 0)
                     {
                         await outputStream.WriteAsync(buffer, 0, bytesRead);
+
+                        totalBytesRead += bytesRead;
+                        // Report progress
+                        if (progress != null)
+                        {
+                            int percentage = (int)((totalBytesRead * 100) / inputStream.Length / 2);
+                            progress.Report(percentage);
+                        }
                     }
                 }
                 keyBytes = null;
@@ -116,15 +141,22 @@ namespace FIH_GUI_Encryptor
         }
         public async Task DoubleDecrypt(Stream inputStream, Stream outputStream, string privatekey, string publickey, int bufferSize = 81920)
         {
-            // Create a temporary file for the first encryption
+            // Create a temporary file for the first decryption
             string tempFile = Path.GetTempFileName();
+            int percentageFirst = 0;
+            IProgress<int> progress = new Progress<int>(percentage =>
+            {
+                // Update your progress bar with the 'percentage' value
+                Main_Form.DecryptionProgress.Value = percentageFirst + percentage;
+            });
 
             try
             {
                 // First encryption with private key.
                 using (FileStream tempStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan))
                 {
-                    await Decrypt(inputStream, tempStream, publickey);
+                    await Decrypt(inputStream, tempStream, publickey, progress);
+                    percentageFirst = Main_Form.DecryptionProgress.Value;
                 }
 
                 // Second encryption with public key.
@@ -132,7 +164,7 @@ namespace FIH_GUI_Encryptor
                 {
                     try
                     {
-                        await Decrypt(tempStream, outputStream, privatekey);
+                        await Decrypt(tempStream, outputStream, privatekey, progress);
                     }
                     catch
                     {
