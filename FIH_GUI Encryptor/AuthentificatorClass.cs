@@ -12,7 +12,7 @@ namespace FIH_GUI_Encryptor
     {
         private static readonly HttpClient HttpClient;
         private static readonly string gistId = @"7aaee48c3ced0fc2b5bf4ba64920aa18";
-        private static readonly string accessToken = @"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";
+        private static readonly string accessToken = @"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";
 
         static Authentificator()
         {

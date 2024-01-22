@@ -20,7 +20,7 @@ namespace FIH_GUI_Encryptor
             ConsoleLog.consoleHandle = IntPtr.Zero;
             #endif
             ConsoleLog.WriteLine("FIH_GUI", "<*> Debugging Console Active <*>");
-            Application.Run(new Login());
+            Application.Run(new Main_Form());
         }
     }
 }
