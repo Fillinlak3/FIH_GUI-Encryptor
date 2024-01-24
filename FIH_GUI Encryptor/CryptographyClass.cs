@@ -70,7 +70,7 @@ namespace FIH_GUI_Encryptor
             IProgress<int> progress = new Progress<int>(percentage =>
             {
                 // Update your progress bar with the 'percentage' value
-                Main_Form.EncryptionProgress.Value = percentageFirst + percentage;
+                Main_Form.EncryptionProgress.Value = percentageFirst + percentage - 1;
             });
 
             try
@@ -92,6 +92,7 @@ namespace FIH_GUI_Encryptor
             {
                 // Delete the temporary file
                 File.Delete(tempFile);
+                Main_Form.DecryptionProgress.Value = 100;
             }
         }
 
@@ -147,7 +148,7 @@ namespace FIH_GUI_Encryptor
             IProgress<int> progress = new Progress<int>(percentage =>
             {
                 // Update your progress bar with the 'percentage' value
-                Main_Form.DecryptionProgress.Value = percentageFirst + percentage;
+                Main_Form.DecryptionProgress.Value = percentageFirst + percentage - 1;
             });
 
             try
@@ -176,6 +177,7 @@ namespace FIH_GUI_Encryptor
             {
                 // Delete the temporary file
                 File.Delete(tempFile);
+                Main_Form.DecryptionProgress.Value = 100;
             }
         }
 
