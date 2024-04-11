@@ -24,7 +24,7 @@ namespace FIH_GUI_Encryptor.AuthClass
         {
             private HttpClient HttpClient;
             private readonly string GistId = @"7aaee48c3ced0fc2b5bf4ba64920aa18";
-            private readonly string AccessToken = @"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";
+            private readonly string AccessToken = @"";
             private string ApiUrl;
 
             public Gist()
