@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
+using FIH_GUI_Encryptor.AuthClass;
 using Windows.Services.Maps;
 
 namespace FIH_GUI_Encryptor
@@ -88,7 +89,7 @@ namespace FIH_GUI_Encryptor
                 if (IsValidName(TextBox_LastName.Text) == false)
                     throw new Exception("Last-Name can have one space or dash and only letters. See the help for more information.");
 
-                List<Authentificator.User> users = await Authentificator.FetchUsers();
+                List<User> users = await Program.AuthentificatorInstance.FetchUsers();
                 // Check if the username is unique.
                 if(users.Any(user => user.Username == TextBox_Username.Text))
                     throw new Exception("Username is already registered!");
@@ -101,7 +102,7 @@ namespace FIH_GUI_Encryptor
                 } while (users.Any(user => user.PrivateKey == privatekey));
 
                 // Everything is fine, register the user.
-                users.Add(new Authentificator.User()
+                users.Add(new User()
                 {
                     Index = users.Count > 0 ? users[users.Count - 1].Index + 1 : 1,
                     Username = TextBox_Username.Text,
@@ -109,7 +110,7 @@ namespace FIH_GUI_Encryptor
                     Email = TextBox_Email.Text,
                     PrivateKey = privatekey
                 });
-                await Authentificator.UpdateUsers(users, true);
+                await Program.AuthentificatorInstance.UpdateUsers(users, true);
                 MessageBox.Show("Account successfully registered!", "Register - Successfull");
 
                 this.Hide();

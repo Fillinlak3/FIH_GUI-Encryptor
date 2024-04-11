@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FIH_GUI_Encryptor.AuthClass;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Windows.Forms;
@@ -81,8 +82,8 @@ namespace FIH_GUI_Encryptor
                     MessageBox.Show("Wrong username or password, try again!", "Login - Wrong credentials", MessageBoxButtons.OK);
                     return;
                 }
-
-                List<Authentificator.User> users = await Authentificator.FetchUsers();
+                
+                List<User> users = await Program.AuthentificatorInstance.FetchUsers();
 
                 if (users.Count == 0) throw new Exception("The database is empty");
 
@@ -91,12 +92,16 @@ namespace FIH_GUI_Encryptor
                     if (TextBox_Username.Text == user.Username && TextBox_Password.Text == user.Password)
                     {
                         Timer_DateTime.Enabled = false;
-                        Authentificator.User.Current.Username = user.Username;
-                        Authentificator.User.Current.Password = user.Password;
-                        Authentificator.User.Current.PrivateKey = user.PrivateKey;
+                        User thisUser = new(
+                            user.Index,
+                            user.Username,
+                            user.Password,
+                            user.Email,
+                            user.PrivateKey
+                        );
 
                         this.Hide();
-                        new Main_Form().ShowDialog();
+                        new Main_Form(thisUser).ShowDialog();
                         this.Close();
                         return;
                     }

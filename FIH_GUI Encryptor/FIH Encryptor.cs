@@ -8,12 +8,14 @@ using System.Diagnostics;
 using Windows.UI.StartScreen;
 using System.Drawing;
 using System.Threading.Tasks;
+using FIH_GUI_Encryptor.AuthClass;
 
 namespace FIH_GUI_Encryptor
 {
     public partial class Main_Form : Form
     {
         #region Class's Variables
+        private User CurrentUser;
         public static string Generated_Key = "";
         private readonly List<String> file_names = new List<String>();
         private readonly List<String> quotes = new List<String>(5) { "You can select multitple files to encrypt / decrypt.",
@@ -26,11 +28,19 @@ namespace FIH_GUI_Encryptor
         public Main_Form()
         {
             InitializeComponent();
+            CurrentUser = new User();
         }
+
+        public Main_Form(User user)
+        {
+            InitializeComponent();
+            CurrentUser = user;
+        }
+
         private void Main_Form_Load(object sender, EventArgs e)
         {
             Setup();
-            Label_Username.Text = Authentificator.User.Current.Username;
+            Label_Username.Text = CurrentUser.Username;
             Label_GreetinsUser.Text = "Welcome back,\n " + Label_Username.Text;
             Pick_Quote();
             Panel_Greetings.Visible = true;
@@ -114,7 +124,7 @@ namespace FIH_GUI_Encryptor
         {
             Setup();
             Pick_Quote();
-            Label_Username.Text = Authentificator.User.Current.Username;
+            Label_Username.Text = CurrentUser.Username;
             Label_GreetinsUser.Text = "Welcome back,\n " + Label_Username.Text;
             Panel_Greetings.Visible = true;
         }
@@ -305,7 +315,7 @@ namespace FIH_GUI_Encryptor
                 int bufferSize = 1024 * 1024;
                 Generated_Key = fih.Generate_Key();
 
-                if (Generated_Key.Length != 32 || Authentificator.User.Current.PrivateKey.Length != 32)
+                if (Generated_Key.Length != 32 || CurrentUser.PrivateKey.Length != 32)
                 {
                     MessageBox.Show("Encryption initialization failed!", "Action Aborted");
                     Generated_Key = string.Empty;
@@ -340,7 +350,7 @@ namespace FIH_GUI_Encryptor
                             // Write "FillInHack!" string during encryption
                             byte[] hackBytes = Encoding.UTF8.GetBytes("FillInHack!");
                             encryptedFileStream.Write(hackBytes, 0, hackBytes.Length);
-                            await fih.DoubleEncrypt(inputFileStream, encryptedFileStream, Authentificator.User.Current.PrivateKey, Generated_Key, bufferSize);
+                            await fih.DoubleEncrypt(inputFileStream, encryptedFileStream, CurrentUser.PrivateKey, Generated_Key, bufferSize);
                             hackBytes = null;
                         }
                         // Move from file.encrypted to original file name.
@@ -429,7 +439,7 @@ namespace FIH_GUI_Encryptor
                     Generated_Key = string.Empty;
                     return;
                 }
-                if (Authentificator.User.Current.PrivateKey.Length != 32)
+                if (CurrentUser.PrivateKey.Length != 32)
                 {
                     MessageBox.Show("Decryption initialization failed!", "Action Aborted");
                     Generated_Key = string.Empty;
@@ -466,7 +476,7 @@ namespace FIH_GUI_Encryptor
                             string hackString = Encoding.UTF8.GetString(hackBytes);
                             if (hackString != "FillInHack!") throw new ArgumentException("File content was altered and it is no longer recoverable.");
 
-                            await fih.DoubleDecrypt(encryptedFileStream, decryptedFileStream, Authentificator.User.Current.PrivateKey, Generated_Key, bufferSize);
+                            await fih.DoubleDecrypt(encryptedFileStream, decryptedFileStream, CurrentUser.PrivateKey, Generated_Key, bufferSize);
                         }
                         // Move from file.encrypted to original file name.
                         File.Delete(file);
@@ -572,7 +582,7 @@ namespace FIH_GUI_Encryptor
         }
         private void UserSettings_Default()
         {
-            TextBox_OldUsername.Text = Authentificator.User.Current.Username;
+            TextBox_OldUsername.Text = CurrentUser.Username;
             TextBox_NewUsername.Text = "Username";
             TextBox_OldPassword.Text = "Password";
             TextBox_NewPassword.Text = "Password";
@@ -590,7 +600,7 @@ namespace FIH_GUI_Encryptor
                     };
 
                     // Username restrictions.
-                    if (TextBox_OldUsername.Text != Authentificator.User.Current.Username)
+                    if (TextBox_OldUsername.Text != CurrentUser.Username)
                         throw new Exception("Old username is not correct to validate your confirmation.");
                     if (TextBox_NewUsername.Text == TextBox_OldUsername.Text)
                         throw new Exception("Cannot use the current username for a new one.");
@@ -603,7 +613,7 @@ namespace FIH_GUI_Encryptor
                     if (Register.IsValidUsername(TextBox_NewUsername.Text) == false)
                         throw new Exception("Username contains unallowed characters. See the help for more information.");
 
-                    List<Authentificator.User> users = await Authentificator.FetchUsers();
+                    List<User> users = await Program.AuthentificatorInstance.FetchUsers();
 
                     // Check if the user is unique.
                     if (users.Any(user => user.Username == TextBox_NewUsername.Text))
@@ -613,16 +623,16 @@ namespace FIH_GUI_Encryptor
 
                     // Implement username change in accounts DB.
                     users.FirstOrDefault(user => user.Username == TextBox_OldUsername.Text).Username = TextBox_NewUsername.Text;
-                    await Authentificator.UpdateUsers(users, true);
+                    await Program.AuthentificatorInstance.UpdateUsers(users, true);
 
-                    Authentificator.User.Current.Username = TextBox_NewUsername.Text;
+                    CurrentUser.Username = TextBox_NewUsername.Text;
                     MessageBox.Show("Succesfully updated username.");
                     PictureBox_Logo_Click(sender, e);
                 }
                 else if (CheckBox_Password.CheckState == CheckState.Checked)
                 {
                     // Password restrictions.
-                    if (TextBox_OldPassword.Text != Authentificator.User.Current.Password)
+                    if (TextBox_OldPassword.Text != CurrentUser.Password)
                         throw new Exception("Old password doesn't match for your confirmation.");
                     if (TextBox_NewPassword.Text == TextBox_OldUsername.Text)
                         throw new Exception("Cannot use the current password for a new one.");
@@ -635,11 +645,11 @@ namespace FIH_GUI_Encryptor
 
                     // Implement password change in accounts local DB.
 
-                    List<Authentificator.User> users = await Authentificator.FetchUsers();
-                    users.FirstOrDefault(user => user.Username == Authentificator.User.Current.Username).Password = TextBox_NewPassword.Text;
-                    await Authentificator.UpdateUsers(users, true);
+                    List<User> users = await Program.AuthentificatorInstance.FetchUsers();
+                    users.FirstOrDefault(user => user.Username == CurrentUser.Username).Password = TextBox_NewPassword.Text;
+                    await Program.AuthentificatorInstance.UpdateUsers(users, true);
 
-                    Authentificator.User.Current.Password = TextBox_NewPassword.Text;
+                    CurrentUser.Password = TextBox_NewPassword.Text;
                     MessageBox.Show("Succesfully updated password.");
                     PictureBox_Logo_Click(sender, e);
                 }
