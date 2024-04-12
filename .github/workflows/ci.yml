@@ -1,0 +1,11 @@
+jobs:
+  example_job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Gist Database
+        run: |
+          echo "The secret token is $GIST_DATABASE"
+        env:
+          GIST_DATABASE: ${{ secrets.GIST_DB_TOKEN }}
